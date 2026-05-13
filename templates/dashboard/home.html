@@ -262,8 +262,22 @@
                     </svg>
                 </div>
                 <span class="dash-alert-badge dash-alert-badge-credit">{{ credit_card_expense_count }}</span>
-                <p class="dash-alert-title">Despesas no cartão</p>
-                <p class="dash-alert-amount dash-alert-amount-credit" data-sensitive-value data-mask="R$ ****">{{ credit_card_expense_total|brl }}</p>
+                <p class="dash-alert-title">Cartão aberto</p>
+                <p class="dash-alert-amount dash-alert-amount-credit" data-sensitive-value data-mask="R$ ****">{{ credit_card_open_total|brl }}</p>
+            </article>
+
+            <article class="dash-alert-card dash-alert-card-credit">
+                <div class="dash-alert-icon dash-alert-icon-credit" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="5" width="18" height="14" rx="2"></rect>
+                        <path d="M3 9h18"></path>
+                        <path d="M8 14h3"></path>
+                        <path d="M14 14h2"></path>
+                    </svg>
+                </div>
+                <span class="dash-alert-badge dash-alert-badge-credit">{{ credit_card_month_count }}</span>
+                <p class="dash-alert-title">Total cartão</p>
+                <p class="dash-alert-amount dash-alert-amount-credit-total" data-sensitive-value data-mask="R$ ****">{{ credit_card_month_total|brl }}</p>
             </article>
         </div>
     </section>

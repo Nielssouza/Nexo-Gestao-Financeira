@@ -15,7 +15,7 @@
     {% if not app_debug %}
     <link rel="manifest" href="{% url 'manifest' %}">
     {% endif %}
-    <link rel="stylesheet" href="{% static 'css/app.css' %}?v=20260512a">
+    <link rel="stylesheet" href="{% static 'css/app.css' %}?v=20260513a">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -134,13 +134,13 @@
     {% endif %}
     {% endblock %}
 
-    <div id="modal-backdrop" class="fixed inset-0 z-50 hidden items-end justify-center bg-slate-950/70 p-4">
+    <div id="modal-backdrop" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/70 p-4">
         <div class="app-modal-panel">
             <div id="modal-content"></div>
         </div>
     </div>
 
-    <script src="{% static 'js/app.js' %}?v=20260512a"></script>
+    <script src="{% static 'js/app.js' %}?v=20260513a"></script>
 <script>
     (function () {
         if (!("serviceWorker" in navigator)) {

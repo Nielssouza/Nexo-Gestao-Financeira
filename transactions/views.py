@@ -7,7 +7,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import F, Q, Sum
 from django.db.models.functions import Coalesce
 from django.http import HttpResponse, HttpResponseRedirect
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, render
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.utils.formats import date_format
@@ -401,11 +401,14 @@ class StatementViewBase(LoginRequiredMixin, TemplateView):
         if category:
             credit_card_expenses = credit_card_expenses.filter(category=category)
 
-        credit_card_expense_total = credit_card_expenses.aggregate(
+        credit_card_month_total = credit_card_expenses.aggregate(
+            total=Coalesce(Sum("amount"), Decimal("0.00"))
+        )["total"]
+        credit_card_open_total = credit_card_expenses.filter(is_cleared=False).aggregate(
             total=Coalesce(Sum("amount"), Decimal("0.00"))
         )["total"]
 
-        return current_balance, monthly_balance, credit_card_expense_total
+        return current_balance, monthly_balance, credit_card_open_total, credit_card_month_total
 
     def get_filtered_transactions(self, form, selected_month):
         queryset = Transaction.objects.filter(tenant=self.request.tenant).select_related(
@@ -422,9 +425,12 @@ class StatementViewBase(LoginRequiredMixin, TemplateView):
             selected_month
         )
         transactions = self.get_filtered_transactions(form, selected_month)
-        current_balance, monthly_balance, credit_card_expense_total = self.get_balances(
-            form, selected_month
-        )
+        (
+            current_balance,
+            monthly_balance,
+            credit_card_open_total,
+            credit_card_month_total,
+        ) = self.get_balances(form, selected_month)
 
         query_params = self.request.GET.copy()
         query_params["month"] = selected_month_value
@@ -439,9 +445,12 @@ class StatementViewBase(LoginRequiredMixin, TemplateView):
         context["current_order"] = self.request.GET.get("order_by", "")
         context["selected_account_id"] = self.request.GET.get("account", "")
         context["selected_category_id"] = self.request.GET.get("category", "")
+        context["today"] = timezone.localdate()
         context["current_balance"] = current_balance
         context["monthly_balance"] = monthly_balance
-        context["credit_card_expense_total"] = credit_card_expense_total
+        context["credit_card_expense_total"] = credit_card_open_total
+        context["credit_card_open_total"] = credit_card_open_total
+        context["credit_card_month_total"] = credit_card_month_total
         context["statement_return_url"] = (
             f"{reverse('transactions:statement')}?{query_params.urlencode()}"
         )
@@ -462,6 +471,7 @@ class StatementBalancePartialView(StatementViewBase):
 
 class TransactionToggleClearedView(LoginRequiredMixin, View):
     success_url = reverse_lazy("transactions:statement")
+    modal_template_name = "transactions/partials/clear_transaction_modal.html"
 
     def _resolve_next_url(self, request):
         next_url = (request.POST.get("next") or "").strip()
@@ -471,17 +481,55 @@ class TransactionToggleClearedView(LoginRequiredMixin, View):
             next_url = str(self.success_url)
         return next_url
 
+    def get(self, request, *args, **kwargs):
+        tx = get_object_or_404(Transaction, pk=kwargs.get("pk"), tenant=request.tenant)
+        return render(
+            request,
+            self.modal_template_name,
+            {
+                "transaction": tx,
+                "next_url": self._resolve_next_url(request),
+                "today": timezone.localdate(),
+            },
+        )
+
     def post(self, request, *args, **kwargs):
         tx = get_object_or_404(Transaction, pk=kwargs.get("pk"), tenant=request.tenant)
-        tx.is_cleared = not tx.is_cleared
+
         if tx.is_cleared:
+            tx.is_cleared = False
+            tx.save(update_fields=["is_cleared", "updated_at"])
+        else:
+            raw_cleared_date = (request.POST.get("cleared_date") or "").strip()
+            try:
+                year, month, day = raw_cleared_date.split("-")
+                cleared_date = date(int(year), int(month), int(day))
+            except (TypeError, ValueError):
+                cleared_date = None
+
+            if cleared_date is None:
+                messages.error(request, "Informe uma data valida para baixar a transacao.")
+                next_url = self._resolve_next_url(request)
+                if request.headers.get("HX-Request") == "true":
+                    response = HttpResponse(status=204)
+                    response["HX-Redirect"] = next_url
+                    return response
+                return HttpResponseRedirect(next_url)
+
+            tx.date = cleared_date
+            tx.is_cleared = True
             tx.is_ignored = False
-        tx.save(update_fields=["is_cleared", "is_ignored", "updated_at"])
+            tx.save(update_fields=["date", "is_cleared", "is_ignored", "updated_at"])
 
         next_url = self._resolve_next_url(request)
         if request.headers.get("HX-Request") == "true":
             response = HttpResponse(status=204)
-            response["HX-Redirect"] = next_url
+            if request.POST.get("modal") == "1":
+                response["HX-Trigger"] = json.dumps(
+                    {"closeModal": True, "transactionUpdated": {"id": tx.pk}}
+                )
+            else:
+                response["HX-Redirect"] = next_url
             return response
 
         return HttpResponseRedirect(next_url)

@@ -5,15 +5,17 @@
             <span class="txn-balance-label">Saldo atual</span>
             <strong class="txn-balance-value{% if current_balance < 0 %} txn-balance-value-negative{% endif %}">{{ current_balance|brl }}</strong>
         </div>
-        <div class="txn-balance-divider"></div>
         <div class="txn-balance-item">
             <span class="txn-balance-label">Balanco mensal</span>
-            <strong class="txn-balance-value{% if monthly_balance < 0 %} txn-balance-value-negative{% endif %}">{{ monthly_balance|brl }}</strong>
+            <strong class="txn-balance-value txn-balance-value-month{% if monthly_balance < 0 %} txn-balance-value-negative{% endif %}">{{ monthly_balance|brl }}</strong>
         </div>
-        <div class="txn-balance-divider"></div>
         <div class="txn-balance-item">
-            <span class="txn-balance-label">Cartão</span>
-            <strong class="txn-balance-value txn-balance-value-card">{{ credit_card_expense_total|brl }}</strong>
+            <span class="txn-balance-label">Cartão aberto</span>
+            <strong class="txn-balance-value txn-balance-value-card">{{ credit_card_open_total|brl }}</strong>
+        </div>
+        <div class="txn-balance-item">
+            <span class="txn-balance-label">Total cartão</span>
+            <strong class="txn-balance-value txn-balance-value-card-total">{{ credit_card_month_total|brl }}</strong>
         </div>
     </div>
 </article>

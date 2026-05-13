@@ -54,13 +54,23 @@
                         </summary>
 
                         <div class="txn-actions-menu">
-                            <form method="post" action="{% url 'transactions:toggle-cleared' transaction.pk %}" class="txn-actions-form" hx-post="{% url 'transactions:toggle-cleared' transaction.pk %}" hx-swap="none">
-                                {% csrf_token %}
-                                <input type="hidden" name="next" value="{{ statement_return_url|default:request.get_full_path }}">
-                                <button type="submit" class="txn-menu-item txn-menu-item-clear{% if transaction.is_cleared %} txn-menu-item-clear-active{% endif %}">
-                                    {% if transaction.is_cleared %}Baixada{% else %}Baixar{% endif %}
+                            {% if transaction.is_cleared %}
+                                <form method="post" action="{% url 'transactions:toggle-cleared' transaction.pk %}" class="txn-actions-form" hx-post="{% url 'transactions:toggle-cleared' transaction.pk %}" hx-swap="none">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="next" value="{{ statement_return_url|default:request.get_full_path }}">
+                                    <button type="submit" class="txn-menu-item txn-menu-item-clear txn-menu-item-clear-active">Baixada</button>
+                                </form>
+                            {% else %}
+                                <button
+                                    type="button"
+                                    class="txn-menu-item txn-menu-item-clear"
+                                    hx-get="{% url 'transactions:toggle-cleared' transaction.pk %}?next={{ statement_return_url|default:request.get_full_path|urlencode }}"
+                                    hx-target="#modal-content"
+                                    hx-swap="innerHTML"
+                                >
+                                    Baixar
                                 </button>
-                            </form>
+                            {% endif %}
 
                             <form method="post" action="{% url 'transactions:toggle-ignored' transaction.pk %}" class="txn-actions-form" hx-post="{% url 'transactions:toggle-ignored' transaction.pk %}" hx-swap="none">
                                 {% csrf_token %}

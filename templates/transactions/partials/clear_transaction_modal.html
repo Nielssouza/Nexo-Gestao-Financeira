@@ -1,0 +1,42 @@
+{% load formatters %}
+<div class="app-modal-content clear-modal">
+    <div class="clear-modal-head">
+        <div>
+            <p class="clear-modal-kicker">Baixar transacao</p>
+            <h3 class="clear-modal-title">{{ transaction.display_title }}</h3>
+        </div>
+        <button type="button" onclick="window.financeApp.closeModal()" class="clear-modal-close" aria-label="Fechar modal">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 6L6 18"></path>
+                <path d="M6 6l12 12"></path>
+            </svg>
+        </button>
+    </div>
+
+    <div class="clear-modal-summary">
+        <span>{{ transaction.account.name }}</span>
+        <strong>{{ transaction.amount|brl }}</strong>
+    </div>
+
+    <form
+        hx-post="{% url 'transactions:toggle-cleared' transaction.pk %}"
+        hx-swap="none"
+        class="clear-modal-form"
+    >
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ next_url }}">
+        <input type="hidden" name="modal" value="1">
+
+        <label class="clear-modal-label" for="modal-cleared-date-{{ transaction.pk }}">Data da baixa</label>
+        <input
+            id="modal-cleared-date-{{ transaction.pk }}"
+            class="clear-modal-date"
+            type="date"
+            name="cleared_date"
+            required
+            autofocus
+        >
+
+        <button type="submit" class="clear-modal-submit">Confirmar baixa</button>
+    </form>
+</div>

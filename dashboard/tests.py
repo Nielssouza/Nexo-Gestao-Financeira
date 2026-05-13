@@ -197,6 +197,16 @@ class DashboardChartsMonthScopeTests(TestCase):
         Transaction.objects.create(
             user=self.user,
             transaction_type=Transaction.TransactionType.EXPENSE,
+            amount=Decimal("70.00"),
+            date=date(2026, 3, 13),
+            account=card_account,
+            category=bank_category,
+            recurrence_type=Transaction.RecurrenceType.ONCE,
+            is_cleared=True,
+        )
+        Transaction.objects.create(
+            user=self.user,
+            transaction_type=Transaction.TransactionType.EXPENSE,
             amount=Decimal("999.00"),
             date=date(2026, 2, 12),
             account=card_account,
@@ -217,9 +227,14 @@ class DashboardChartsMonthScopeTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["credit_card_expense_total"], Decimal("200.50"))
+        self.assertEqual(response.context["credit_card_open_total"], Decimal("200.50"))
+        self.assertEqual(response.context["credit_card_month_total"], Decimal("270.50"))
         self.assertEqual(response.context["credit_card_expense_count"], 2)
-        self.assertContains(response, "Despesas no cartão")
+        self.assertEqual(response.context["credit_card_month_count"], 3)
+        self.assertContains(response, "Cartão aberto")
+        self.assertContains(response, "Total cartão")
         self.assertContains(response, "R$ 200,50")
+        self.assertContains(response, "R$ 270,50")
 
 class DashboardPostLoginLoaderTests(TestCase):
     def setUp(self):

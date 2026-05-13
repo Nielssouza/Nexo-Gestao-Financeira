@@ -269,10 +269,15 @@ class DashboardContextMixin(LoginRequiredMixin):
             transaction_type=Transaction.TransactionType.EXPENSE,
             account__account_type=Account.AccountType.CARD,
         )
-        credit_card_expense_total = credit_card_expenses.aggregate(
+        credit_card_month_total = credit_card_expenses.aggregate(
             total=Coalesce(Sum("amount"), Decimal("0.00"))
         )["total"]
-        credit_card_expense_count = credit_card_expenses.count()
+        credit_card_open_expenses = credit_card_expenses.filter(is_cleared=False)
+        credit_card_expense_total = credit_card_open_expenses.aggregate(
+            total=Coalesce(Sum("amount"), Decimal("0.00"))
+        )["total"]
+        credit_card_expense_count = credit_card_open_expenses.count()
+        credit_card_month_count = credit_card_expenses.count()
 
         category_source = current_month_transactions.filter(
             transaction_type=Transaction.TransactionType.EXPENSE
@@ -323,6 +328,9 @@ class DashboardContextMixin(LoginRequiredMixin):
             "pending_expense_count": pending_expense_count,
             "credit_card_expense_total": credit_card_expense_total,
             "credit_card_expense_count": credit_card_expense_count,
+            "credit_card_open_total": credit_card_expense_total,
+            "credit_card_month_total": credit_card_month_total,
+            "credit_card_month_count": credit_card_month_count,
             "due_notifications": due_notifications,
             "due_notifications_count": due_notifications_count,
             "due_overdue_count": due_overdue_count,

@@ -737,6 +737,17 @@ class TransactionScopeAndMonthLockTests(TestCase):
         Transaction.objects.create(
             user=self.user,
             transaction_type=Transaction.TransactionType.EXPENSE,
+            amount=Decimal("120.00"),
+            date=date(2026, 2, 11),
+            account=card_account,
+            category=expense_category,
+            description="Compra baixada",
+            recurrence_type=Transaction.RecurrenceType.ONCE,
+            is_cleared=True,
+        )
+        Transaction.objects.create(
+            user=self.user,
+            transaction_type=Transaction.TransactionType.EXPENSE,
             amount=Decimal("99.00"),
             date=date(2026, 1, 10),
             account=card_account,
@@ -759,19 +770,60 @@ class TransactionScopeAndMonthLockTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["credit_card_expense_total"], Decimal("750.05"))
-        self.assertContains(response, "Cartão")
+        self.assertEqual(response.context["credit_card_open_total"], Decimal("750.05"))
+        self.assertEqual(response.context["credit_card_month_total"], Decimal("870.05"))
+        self.assertContains(response, "Cartão aberto")
+        self.assertContains(response, "Total cartão")
         self.assertContains(response, "R$ 750,05")
+        self.assertContains(response, "R$ 870,05")
 
     def test_toggle_cleared_with_htmx_returns_redirect_header(self):
         response = self.client.post(
             reverse("transactions:toggle-cleared", args=[self.feb.pk]),
-            data={"next": "/transactions/?month=2026-02"},
+            data={"next": "/transactions/?month=2026-02", "cleared_date": "2026-02-22"},
             HTTP_HX_REQUEST="true",
         )
 
         self.assertEqual(response.status_code, 204)
         self.assertIn("HX-Redirect", response.headers)
         self.assertEqual(response.headers["HX-Redirect"], "/transactions/?month=2026-02")
+
+    def test_toggle_cleared_requires_cleared_date(self):
+        response = self.client.post(
+            reverse("transactions:toggle-cleared", args=[self.feb.pk]),
+            data={"next": "/transactions/?month=2026-02"},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.feb.refresh_from_db()
+        self.assertFalse(self.feb.is_cleared)
+
+    def test_toggle_cleared_get_renders_date_modal(self):
+        response = self.client.get(
+            reverse("transactions:toggle-cleared", args=[self.feb.pk]),
+            {"next": "/transactions/?month=2026-02"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Data da baixa")
+        self.assertContains(response, 'name="cleared_date"', html=False)
+        self.assertContains(response, "Confirmar baixa")
+
+    def test_toggle_cleared_from_modal_closes_modal(self):
+        response = self.client.post(
+            reverse("transactions:toggle-cleared", args=[self.feb.pk]),
+            data={
+                "next": "/transactions/?month=2026-02",
+                "cleared_date": "2026-02-22",
+                "modal": "1",
+            },
+            HTTP_HX_REQUEST="true",
+        )
+
+        self.assertEqual(response.status_code, 204)
+        self.assertIn("HX-Trigger", response.headers)
+        self.assertIn("closeModal", response.headers["HX-Trigger"])
+        self.assertNotIn("HX-Redirect", response.headers)
 
     def test_toggle_ignored_with_htmx_returns_redirect_header(self):
         expense_category = Category.objects.create(
@@ -822,13 +874,14 @@ class TransactionScopeAndMonthLockTests(TestCase):
 
         response = self.client.post(
             reverse("transactions:toggle-cleared", args=[expense.pk]),
-            data={"next": "/transactions/?month=2026-02"},
+            data={"next": "/transactions/?month=2026-02", "cleared_date": "2026-02-25"},
         )
         self.assertEqual(response.status_code, 302)
 
         expense.refresh_from_db()
         self.assertTrue(expense.is_cleared)
         self.assertFalse(expense.is_ignored)
+        self.assertEqual(expense.date, date(2026, 2, 25))
 
 
 
