@@ -32,6 +32,8 @@ if _debug_env is None:
 else:
     DEBUG = env_bool("DJANGO_DEBUG", default=False)
 
+import secrets as _secrets
+
 _secret_key_env = os.getenv("DJANGO_SECRET_KEY")
 _secret_key_required = (
     HEROKU_DYNO
@@ -40,8 +42,15 @@ _secret_key_required = (
 )
 if _secret_key_env:
     SECRET_KEY = _secret_key_env
-elif TESTING or RUNSERVER or not _secret_key_required:
-    SECRET_KEY = "control-local-default-key-change-in-env-2026-02-13-9f2c7b6e4d1a"
+elif TESTING:
+    SECRET_KEY = "test-only-insecure-key-not-for-production"
+elif RUNSERVER:
+    import warnings
+    SECRET_KEY = _secrets.token_urlsafe(50)
+    warnings.warn(
+        "DJANGO_SECRET_KEY not set. A random key is being used — sessions will not persist across server restarts.",
+        stacklevel=2,
+    )
 else:
     raise ImproperlyConfigured("DJANGO_SECRET_KEY must be set for deployed environments.")
 
@@ -75,6 +84,7 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
+    "whitenoise.runserver_nostatic",
     "django.contrib.staticfiles",
     "tenants.apps.TenantsConfig",
     "users",
@@ -84,7 +94,7 @@ INSTALLED_APPS = [
     "dashboard",
     "goals",
     "shopping",
-]
+] + (["django_browser_reload"] if RUNSERVER else [])
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -96,7 +106,7 @@ MIDDLEWARE = [
     "tenants.middleware.CurrentTenantMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-]
+] + (["django_browser_reload.middleware.BrowserReloadMiddleware"] if RUNSERVER else [])
 
 ROOT_URLCONF = "nexo.urls"
 
@@ -232,7 +242,7 @@ SESSION_COOKIE_SECURE = env_bool(
 CSRF_COOKIE_SECURE = env_bool(
     "DJANGO_CSRF_COOKIE_SECURE", default=default_secure_mode
 )
-CSRF_COOKIE_HTTPONLY = env_bool("DJANGO_CSRF_COOKIE_HTTPONLY", default=True)
+CSRF_COOKIE_HTTPONLY = env_bool("DJANGO_CSRF_COOKIE_HTTPONLY", default=False)
 
 SESSION_COOKIE_SAMESITE = os.getenv("DJANGO_SESSION_COOKIE_SAMESITE", "Lax")
 CSRF_COOKIE_SAMESITE = os.getenv("DJANGO_CSRF_COOKIE_SAMESITE", "Lax")

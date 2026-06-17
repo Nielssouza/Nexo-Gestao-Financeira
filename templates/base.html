@@ -33,6 +33,11 @@
         };
     </script>
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <script>
+        document.addEventListener('htmx:configRequest', function (e) {
+            e.detail.headers['X-CSRFToken'] = '{{ csrf_token }}';
+        });
+    </script>
     {% block extra_head %}{% endblock %}
 </head>
 <body class="bg-app text-slate-100 antialiased {% block body_class %}{% endblock %}">

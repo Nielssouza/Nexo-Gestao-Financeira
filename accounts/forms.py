@@ -22,6 +22,7 @@ class CreditLimitForm(forms.Form):
         max_digits=12,
         decimal_places=2,
         min_value=Decimal("0.00"),
+        widget=forms.TextInput(attrs={"inputmode": "decimal", "placeholder": "0.00"}),
     )
 
     def __init__(self, *args, tenant=None, **kwargs):

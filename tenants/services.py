@@ -93,7 +93,25 @@ def get_request_tenant(request):
         return None
 
     tenant_id = request.session.get("active_tenant_id")
-    tenant = get_active_tenant_for_user(user, tenant_id=tenant_id)
-    if tenant is not None:
-        request.session["active_tenant_id"] = tenant.pk
-    return tenant
+
+    memberships = TenantMembership.objects.select_related("tenant").filter(
+        user=user,
+        tenant__is_active=True,
+    )
+
+    if not memberships.exists():
+        request.session.flush()
+        return None
+
+    if tenant_id:
+        selected = memberships.filter(tenant_id=tenant_id).first()
+        if selected:
+            request.session["active_tenant_id"] = selected.tenant.pk
+            return selected.tenant
+
+    default = memberships.filter(is_default=True).first() or memberships.order_by("id").first()
+    if default:
+        request.session["active_tenant_id"] = default.tenant.pk
+        return default.tenant
+
+    return None

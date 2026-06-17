@@ -65,7 +65,13 @@ class MonthLockMixin:
         return self.request.user.check_password(password)
 
     def ensure_month_unlocked(self, queryset, form=None):
-        return True
+        if not self.queryset_has_closed_month(queryset):
+            return True
+        if self.is_unlock_password_valid():
+            return True
+        if form:
+            form.add_error(None, self.closed_month_error)
+        return False
 
 
 class RecurrenceScopeMixin:
