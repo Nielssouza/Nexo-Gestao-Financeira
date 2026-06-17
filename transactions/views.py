@@ -487,7 +487,7 @@ class StatementViewBase(LoginRequiredMixin, TemplateView):
             account__account_type=Account.AccountType.CARD
         ).aggregate(total=Coalesce(Sum("amount"), Decimal("0.00")))["total"]
         context["pending_bank_total"] = pending_bank_total
-        context["balance_after_pending"] = consolidated_balance - pending_expense_total
+        context["balance_after_pending"] = consolidated_balance - pending_bank_total
         context["statement_return_url"] = (
             f"{reverse('transactions:statement')}?{query_params.urlencode()}"
         )

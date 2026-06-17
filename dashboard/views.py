@@ -285,7 +285,10 @@ class DashboardContextMixin(LoginRequiredMixin):
         credit_card_limit = calculate_credit_card_available_limit(tenant, selected_month)
         monthly_balance = calculate_monthly_balance(user, selected_month, tenant=tenant)
         consolidated_balance = monthly_balance + credit_card_limit
-        balance_after_pending = consolidated_balance - pending_expense_total
+        pending_bank_total = pending_expenses.exclude(
+            account__account_type=Account.AccountType.CARD
+        ).aggregate(total=Coalesce(Sum("amount"), Decimal("0.00")))["total"]
+        balance_after_pending = consolidated_balance - pending_bank_total
 
         category_source = current_month_transactions.filter(
             transaction_type=Transaction.TransactionType.EXPENSE
