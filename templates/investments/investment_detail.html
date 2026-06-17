@@ -46,13 +46,36 @@
         </div>
     </article>
 
-    <article class="card space-y-4">
-        <h2 class="app-title-sm">Novo lancamento</h2>
-        <form method="post" class="space-y-3">
-            {% include "partials/form_fields.html" with form=entry_form %}
-            <button type="submit" class="app-btn-primary w-full justify-center">Registrar</button>
-        </form>
+    <article class="card">
+        <button
+            type="button"
+            id="entry-form-toggle"
+            onclick="toggleEntryForm()"
+            class="w-full flex items-center justify-between gap-2"
+            aria-expanded="false"
+        >
+            <h2 class="app-title-sm">Novo lancamento</h2>
+            <svg id="entry-form-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:1.1rem;height:1.1rem;flex-shrink:0;transition:transform 0.2s;"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div id="entry-form-body" class="hidden space-y-3 mt-4">
+            <form method="post" class="space-y-3">
+                {% include "partials/form_fields.html" with form=entry_form %}
+                <button type="submit" class="app-btn-primary w-full justify-center">Registrar</button>
+            </form>
+        </div>
     </article>
+
+    <script>
+        function toggleEntryForm() {
+            var body = document.getElementById("entry-form-body");
+            var chevron = document.getElementById("entry-form-chevron");
+            var btn = document.getElementById("entry-form-toggle");
+            var isOpen = !body.classList.contains("hidden");
+            body.classList.toggle("hidden", isOpen);
+            chevron.style.transform = isOpen ? "" : "rotate(180deg)";
+            btn.setAttribute("aria-expanded", String(!isOpen));
+        }
+    </script>
 
     <section class="space-y-3">
         <div class="flex items-center justify-between gap-3">
