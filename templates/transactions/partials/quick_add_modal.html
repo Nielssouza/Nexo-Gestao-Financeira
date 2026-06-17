@@ -72,15 +72,36 @@
         };
 
         const accountField = form.querySelector('[name="account"]');
+        const categoryField = form.querySelector('[name="category"]');
+
+        const filterCategories = function () {
+            if (!txTypeField || !categoryField) return;
+            const txType = txTypeField.value;
+            const expectedType = txType === "income" ? "income" : txType === "expense" ? "expense" : null;
+            Array.from(categoryField.options).forEach(function (opt) {
+                if (!opt.value) return;
+                const catType = opt.getAttribute("data-category-type");
+                const hide = expectedType && catType && catType !== expectedType;
+                opt.hidden = hide;
+                opt.disabled = hide;
+                if (hide && categoryField.value === opt.value) {
+                    categoryField.value = "";
+                }
+            });
+        };
 
         recurrenceField.addEventListener("change", toggleFields);
         if (txTypeField) {
-            txTypeField.addEventListener("change", toggleTransfer);
+            txTypeField.addEventListener("change", function () {
+                toggleTransfer();
+                filterCategories();
+            });
         }
         if (accountField) {
             accountField.addEventListener("change", syncDestinationOptions);
         }
         toggleFields();
         toggleTransfer();
+        filterCategories();
     })();
 </script>

@@ -11,6 +11,29 @@ from common.tenancy import resolve_tenant
 from transactions.models import Transaction
 
 
+class CategorySelect(forms.Select):
+    def optgroups(self, name, value, attrs=None):
+        try:
+            self._cat_type_map = {
+                cat.pk: cat.category_type
+                for cat in self.choices.queryset
+            }
+        except Exception:
+            self._cat_type_map = {}
+        return super().optgroups(name, value, attrs)
+
+    def create_option(self, name, value, label, selected, index, **kwargs):
+        option = super().create_option(name, value, label, selected, index, **kwargs)
+        if value:
+            try:
+                cat_type = self._cat_type_map.get(int(value))
+                if cat_type:
+                    option["attrs"]["data-category-type"] = cat_type
+            except Exception:
+                pass
+        return option
+
+
 class TransactionForm(forms.ModelForm):
     amount = forms.CharField(
         label="Valor",
@@ -107,6 +130,7 @@ class TransactionForm(forms.ModelForm):
                 "category_type", "name"
             )
             self.fields["category"].required = False
+            self.fields["category"].widget = CategorySelect()
 
         if "installment_count" in self.fields:
             self.fields["installment_count"].required = False
