@@ -1400,6 +1400,44 @@ body {
     color: #fbbf24;
 }
 
+.txn-balance-mini-card {
+    margin-top: 0.35rem;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.16rem 0.45rem 0.16rem 0.5rem;
+    border-radius: 0.4rem;
+    background: rgba(110, 231, 183, 0.06);
+    border: 1px solid rgba(110, 231, 183, 0.16);
+    border-left: 3px solid rgba(110, 231, 183, 0.6);
+}
+
+.txn-balance-mini-card-negative {
+    background: rgba(239, 68, 68, 0.06);
+    border-color: rgba(239, 68, 68, 0.16);
+    border-left-color: rgba(239, 68, 68, 0.6);
+}
+
+.txn-balance-mini-label {
+    font-size: 0.55rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: rgba(203, 213, 225, 0.5) !important;
+}
+
+.txn-balance-mini-value {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #6ee7b7 !important;
+}
+
+.txn-balance-mini-value-negative {
+    color: #ef4444 !important;
+}
+
 .txn-balance-value-card-total {
     color: #60a5fa;
 }

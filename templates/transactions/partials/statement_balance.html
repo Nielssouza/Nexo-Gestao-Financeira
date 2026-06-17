@@ -14,12 +14,16 @@
             <strong class="txn-balance-value txn-balance-value-card">{{ credit_card_open_total|brl }}</strong>
         </div>
         <div class="txn-balance-item">
-            <span class="txn-balance-label">Total cartão</span>
-            <strong class="txn-balance-value txn-balance-value-card-total">{{ credit_card_month_total|brl }}</strong>
+            <span class="txn-balance-label">Limite do cartão</span>
+            <strong class="txn-balance-value txn-balance-value-card-limit{% if credit_card_limit < 0 %} txn-balance-value-negative{% endif %}">{{ credit_card_limit|brl }}</strong>
+            <div class="txn-balance-mini-card{% if credit_card_available < 0 %} txn-balance-mini-card-negative{% endif %}">
+                <span class="txn-balance-mini-label">Disponível</span>
+                <span class="txn-balance-mini-value{% if credit_card_available < 0 %} txn-balance-mini-value-negative{% endif %}">{{ credit_card_available|brl }}</span>
+            </div>
         </div>
         <div class="txn-balance-item">
-            <span class="txn-balance-label">Limite do cartão</span>
-            <strong class="txn-balance-value txn-balance-value-card-limit">{{ credit_card_limit|brl }}</strong>
+            <span class="txn-balance-label">Total cartão</span>
+            <strong class="txn-balance-value txn-balance-value-card-total">{{ credit_card_month_total|brl }}</strong>
         </div>
         <div class="txn-balance-item">
             <span class="txn-balance-label">Balanço consolidado</span>

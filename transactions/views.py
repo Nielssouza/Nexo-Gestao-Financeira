@@ -330,7 +330,7 @@ class StatementViewBase(LoginRequiredMixin, TemplateView):
     def apply_filters(self, queryset, form, selected_month):
         account = None
         category = None
-        order_by = 'oldest'
+        order_by = 'recent'
 
         queryset = queryset.filter(
             date__year=selected_month.year,
@@ -462,6 +462,7 @@ class StatementViewBase(LoginRequiredMixin, TemplateView):
         context["credit_card_open_total"] = credit_card_open_total
         context["credit_card_month_total"] = credit_card_month_total
         context["credit_card_limit"] = credit_card_limit
+        context["credit_card_available"] = credit_card_limit - credit_card_open_total
         context["consolidated_balance"] = monthly_balance + credit_card_limit
         context["statement_return_url"] = (
             f"{reverse('transactions:statement')}?{query_params.urlencode()}"
