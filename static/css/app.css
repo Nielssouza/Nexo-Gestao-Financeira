@@ -4107,26 +4107,31 @@ input[type="radio"] {
 }
 
 .fab-speed-dial-label {
-    background: rgba(30, 41, 59, 0.45);
-    color: #e2e8f0;
-    font-size: 0.78rem;
-    font-weight: 600;
-    padding: 0.3rem 0.75rem;
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+    font-size: 0.82rem;
+    font-weight: 700;
+    padding: 0.38rem 1rem;
     border-radius: 9999px;
-    border: 1px solid rgba(100, 116, 139, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.25);
     white-space: nowrap;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+    letter-spacing: 0.01em;
+    backdrop-filter: blur(8px);
 }
 
 .fab-speed-dial-mini {
     width: 2.75rem;
     height: 2.75rem;
     border-radius: 9999px;
-    background: rgba(30, 41, 59, 0.9);
-    border: 1px solid rgba(100, 116, 139, 0.45);
-    color: #e2e8f0;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: #fff;
     display: grid;
     place-items: center;
     flex-shrink: 0;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(8px);
 }
 
 .fab-speed-dial-mini svg {
