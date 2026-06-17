@@ -285,6 +285,7 @@ class DashboardContextMixin(LoginRequiredMixin):
         credit_card_limit = calculate_credit_card_available_limit(tenant, selected_month)
         monthly_balance = calculate_monthly_balance(user, selected_month, tenant=tenant)
         consolidated_balance = monthly_balance + credit_card_limit
+        balance_after_pending = consolidated_balance - pending_expense_total
 
         category_source = current_month_transactions.filter(
             transaction_type=Transaction.TransactionType.EXPENSE
@@ -372,6 +373,7 @@ class DashboardContextMixin(LoginRequiredMixin):
             "credit_card_month_count": credit_card_month_count,
             "credit_card_limit": credit_card_limit,
             "consolidated_balance": consolidated_balance,
+            "balance_after_pending": balance_after_pending,
             "due_notifications": due_notifications,
             "due_notifications_count": due_notifications_count,
             "due_overdue_count": due_overdue_count,

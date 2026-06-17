@@ -2308,6 +2308,31 @@ body {
     color: #fb4b5f;
 }
 
+.dash-available-card {
+    border-color: rgba(124, 58, 237, 0.3);
+    background: rgba(124, 58, 237, 0.08);
+}
+
+.dash-available-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.dash-available-sub {
+    font-size: 0.7rem;
+    color: rgba(203, 213, 225, 0.5);
+    margin-top: 0.15rem;
+}
+
+.dash-available-value {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #a78bfa;
+    white-space: nowrap;
+}
+
 .dash-category-card {
     border-radius: 1.8rem;
     background: linear-gradient(185deg, #181c26 0%, #141924 100%);

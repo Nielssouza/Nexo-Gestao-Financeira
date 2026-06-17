@@ -318,6 +318,18 @@
                 <p class="dash-alert-amount dash-alert-amount-consolidated{% if consolidated_balance < 0 %} dash-alert-amount-negative{% endif %}" data-sensitive-value data-mask="R$ ****">{{ consolidated_balance|brl }}</p>
             </article>
         </div>
+
+        <article class="dash-alert-card dash-available-card" style="margin-top:0.75rem;">
+            <div class="dash-available-row">
+                <div>
+                    <p class="dash-alert-title">Disponível após pendências</p>
+                    <p class="dash-available-sub">Balanço consolidado menos despesas em aberto</p>
+                </div>
+                <p class="dash-available-value{% if balance_after_pending < 0 %} dash-alert-amount-negative{% endif %}" data-sensitive-value data-mask="R$ ****">
+                    {{ balance_after_pending|brl }}
+                </p>
+            </div>
+        </article>
     </section>
 
     <section class="dash-section">
