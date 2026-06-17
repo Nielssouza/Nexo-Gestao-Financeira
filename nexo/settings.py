@@ -92,8 +92,8 @@ INSTALLED_APPS = [
     "categories",
     "transactions",
     "dashboard",
-    "goals",
     "shopping",
+    "investments.apps.InvestmentsConfig",
 ] + (["django_browser_reload"] if RUNSERVER else [])
 
 MIDDLEWARE = [

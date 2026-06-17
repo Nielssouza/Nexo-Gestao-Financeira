@@ -130,6 +130,13 @@
                     <span>Categorias</span>
                 </a>
 
+                <a href="{% url 'investments:list' %}" class="txn-tab-link {% if current|slice:':15' == '/investimentos/' %}txn-tab-active{% endif %}" {% if current|slice:':15' == '/investimentos/' %}aria-current="page"{% endif %}>
+                    <span class="txn-tab-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 14l4-5 4 3 4-6"/></svg>
+                    </span>
+                    <span>Investimentos</span>
+                </a>
+
                 <a href="{% url 'shopping:list' %}" class="txn-tab-link {% if current|slice:':10' == '/shopping/' %}txn-tab-active{% endif %}" {% if current|slice:':10' == '/shopping/' %}aria-current="page"{% endif %}>
                     <span class="txn-tab-icon">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 5h2l2.2 10h10.8l2-7H8.2"/><circle cx="10" cy="19" r="1.6"/><circle cx="17" cy="19" r="1.6"/></svg>

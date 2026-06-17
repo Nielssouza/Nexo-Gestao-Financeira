@@ -68,6 +68,17 @@
         <span>Categorias</span>
     </a>
 
+    <a href="{% url 'investments:list' %}" class="dash-tab-link">
+        <span class="dash-tab-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M4 19V5"></path>
+                <path d="M4 19h16"></path>
+                <path d="M8 14l4-5 4 3 4-6"></path>
+            </svg>
+        </span>
+        <span>Investimentos</span>
+    </a>
+
     <a href="{% url 'shopping:list' %}" class="dash-tab-link">
         <span class="dash-tab-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -337,53 +348,65 @@
 
     <section class="dash-section">
         <div class="dash-goals-header">
-            <h2 class="dash-section-title mb-0">Objetivos</h2>
-            <span class="dash-goals-icon" aria-hidden="true">
+            <a href="{% url 'investments:list' %}" class="dash-section-title mb-0" style="text-decoration:none;color:inherit;">Investimentos</a>
+            <a href="{% url 'investments:list' %}" class="dash-goals-icon" aria-label="Ver investimentos">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                    <rect x="4" y="4" width="6" height="16" rx="2"></rect>
-                    <rect x="14" y="4" width="6" height="16" rx="2"></rect>
+                    <path d="M4 19V5"></path>
+                    <path d="M4 19h16"></path>
+                    <path d="M8 14l4-5 4 3 4-6"></path>
                 </svg>
-            </span>
+            </a>
         </div>
 
-        <article class="dash-goal-card">
-            <span class="dash-goal-badge" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                    <path d="M4 4l7 7"></path>
-                    <path d="M13 13l7 7"></path>
-                    <path d="M3 11l8-8"></path>
-                    <path d="M13 21l8-8"></path>
-                    <circle cx="8.5" cy="8.5" r="1"></circle>
-                    <circle cx="15.5" cy="15.5" r="1"></circle>
-                </svg>
-            </span>
-
-            {% if active_goal %}
-                <p class="dash-goal-title">{{ active_goal.name }}</p>
-                <div class="dash-goal-progress-wrap">
-                    <div class="dash-goal-progress-track">
-                        <div class="dash-goal-progress-fill" style="width: {{ goal_progress|floatformat:2 }}%;"></div>
-                        <span class="dash-goal-percent" data-sensitive-value data-mask="**,**%">{{ goal_progress|floatformat:2 }}%</span>
+        {% if investment_count %}
+        <article class="dash-goal-card space-y-3">
+            <div class="inv-dash-totals">
+                <div class="inv-dash-total-main">
+                    <span class="inv-summary-label">Patrimônio liquido</span>
+                    <span class="inv-dash-big-value" data-sensitive-value data-mask="R$ ****">{{ net_invested|brl }}</span>
+                </div>
+                <div class="inv-dash-total-side">
+                    <div>
+                        <span class="inv-summary-label">Rendimentos</span>
+                        <span class="inv-summary-value inv-summary-value-earnings" data-sensitive-value data-mask="R$ ****">{{ total_earnings|brl }}</span>
+                    </div>
+                    <div>
+                        <span class="inv-summary-label">Resgates</span>
+                        <span class="inv-summary-value inv-summary-value-withdrawn" data-sensitive-value data-mask="R$ ****">{{ total_withdrawn|brl }}</span>
                     </div>
                 </div>
+            </div>
 
-                <p class="dash-goal-values" data-sensitive-value data-mask="R$ ****/R$ ****">{{ goal_saved|brl }}/{{ goal_target|brl }}</p>
-                <p class="dash-goal-remaining" data-sensitive-value data-mask="Faltam R$ ****">Faltam {{ goal_remaining|brl }}</p>
-                <a href="{% url 'goals:detail' active_goal.pk %}" class="dash-goal-more">Ver mais</a>
-            {% else %}
-                <p class="dash-goal-title">Nenhum objetivo ativo</p>
-                <div class="dash-goal-progress-wrap">
-                    <div class="dash-goal-progress-track">
-                        <div class="dash-goal-progress-fill" style="width: 0%;"></div>
-                        <span class="dash-goal-percent" data-sensitive-value data-mask="**,**%">0,00%</span>
-                    </div>
+            {% if inv_by_type %}
+            <div class="inv-dash-bar-wrap">
+                {% for item in inv_by_type %}
+                    <div class="inv-dash-bar-segment" style="width:{{ item.pct }}%; background:{{ item.color }};" title="{{ item.label }}: {{ item.pct }}%"></div>
+                {% endfor %}
+            </div>
+
+            <div class="inv-dash-legend">
+                {% for item in inv_by_type %}
+                <div class="inv-dash-legend-item">
+                    <span class="inv-dash-legend-dot" style="background:{{ item.color }};"></span>
+                    <span class="inv-dash-legend-name">{{ item.label }}</span>
+                    <span class="inv-dash-legend-pct">{{ item.pct }}%</span>
                 </div>
-                <p class="dash-goal-values" data-sensitive-value data-mask="R$ ****/R$ ****">R$ 0,00/R$ 0,00</p>
-                <p class="dash-goal-remaining">Crie um objetivo para acompanhar sua reserva.</p>
-                <a href="{% url 'goals:create' %}" class="dash-goal-more">Criar</a>
+                {% endfor %}
+            </div>
             {% endif %}
-        </article>
 
+            <div class="flex items-center justify-between" style="padding-top:0.25rem; border-top: 1px solid rgba(71,85,105,0.35);">
+                <span class="inv-summary-label">{{ investment_count }} ativo{{ investment_count|pluralize:",s" }}</span>
+                <a href="{% url 'investments:list' %}" class="dash-goal-more" style="margin-top:0;">Ver carteira</a>
+            </div>
+        </article>
+        {% else %}
+        <article class="dash-goal-card">
+            <p class="dash-goal-title">Nenhum investimento ativo</p>
+            <p class="dash-goal-remaining">Adicione um investimento para acompanhar no dashboard.</p>
+            <a href="{% url 'investments:create' %}" class="dash-goal-more">Adicionar</a>
+        </article>
+        {% endif %}
     </section>
 </section>
 {% endblock %}

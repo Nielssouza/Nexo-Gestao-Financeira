@@ -1,21 +1,5 @@
 <div class="fab-speed-dial-menu" id="fab-speed-dial-menu" aria-hidden="true">
-    <button
-        class="fab-speed-dial-item"
-        hx-get="{% url 'accounts:credit-limit' %}"
-        hx-target="#modal-content"
-        hx-swap="innerHTML"
-        hx-on::before-request="closeFabDial()"
-        aria-label="Lançar limite do cartão"
-    >
-        <span class="fab-speed-dial-label">Limite cartão</span>
-        <span class="fab-speed-dial-mini">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <rect x="2" y="6" width="20" height="13" rx="2"/>
-                <path d="M2 10h20"/>
-            </svg>
-        </span>
-    </button>
-    <button
+<button
         class="fab-speed-dial-item"
         hx-get="{% url 'transactions:quick-add' %}"
         hx-target="#modal-content"

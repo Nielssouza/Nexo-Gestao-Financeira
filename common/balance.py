@@ -113,18 +113,27 @@ def calculate_credit_card_available_limit(tenant, selected_month):
         month=selected_month.month,
     ).aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
 
-    monthly_expenses = Transaction.objects.filter(
+    card_filter = dict(
         tenant=tenant,
-        transaction_type=Transaction.TransactionType.EXPENSE,
         account__account_type="card",
         account__is_active=True,
         is_cleared=True,
         is_ignored=False,
         date__year=selected_month.year,
         date__month=selected_month.month,
+    )
+
+    monthly_expenses = Transaction.objects.filter(
+        **card_filter,
+        transaction_type=Transaction.TransactionType.EXPENSE,
     ).aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
 
-    return total_limit - monthly_expenses
+    monthly_income = Transaction.objects.filter(
+        **card_filter,
+        transaction_type=Transaction.TransactionType.INCOME,
+    ).aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
+
+    return total_limit - monthly_expenses + monthly_income
 
 
 def calculate_monthly_balance(user, selected_month, account=None, category=None, tenant=None):

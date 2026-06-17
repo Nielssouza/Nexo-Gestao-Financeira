@@ -4109,6 +4109,133 @@ input[type="radio"] {
     height: 1.2rem;
 }
 
+/* Investments */
+.inv-summary-row {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: space-between;
+}
+
+.inv-summary-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.18rem;
+    flex: 1;
+}
+
+.inv-summary-label {
+    font-size: 0.72rem;
+    color: rgba(203, 213, 225, 0.65);
+    font-weight: 500;
+}
+
+.inv-summary-value {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: #f8fafc;
+}
+
+.inv-summary-value-withdrawn {
+    color: #f87171;
+}
+
+.inv-summary-value-earnings {
+    color: #4ade80;
+}
+
+.inv-entry-deposit {
+    color: #4ade80;
+}
+
+.inv-entry-withdrawal {
+    color: #f87171;
+}
+
+.inv-entry-earnings {
+    color: #38bdf8;
+}
+
+/* Investment dashboard widget */
+.inv-dash-totals {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.inv-dash-total-main {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.inv-dash-big-value {
+    font-size: 1.45rem;
+    font-weight: 800;
+    color: #f8fafc;
+    letter-spacing: -0.02em;
+}
+
+.inv-dash-total-side {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    align-items: flex-end;
+}
+
+.inv-dash-total-side > div {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.1rem;
+}
+
+.inv-dash-bar-wrap {
+    display: flex;
+    height: 0.55rem;
+    border-radius: 9999px;
+    overflow: hidden;
+    gap: 2px;
+}
+
+.inv-dash-bar-segment {
+    height: 100%;
+    border-radius: 9999px;
+    min-width: 4px;
+    transition: opacity 0.15s;
+}
+
+.inv-dash-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.inv-dash-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.inv-dash-legend-dot {
+    width: 0.6rem;
+    height: 0.6rem;
+    border-radius: 9999px;
+    flex-shrink: 0;
+}
+
+.inv-dash-legend-name {
+    font-size: 0.78rem;
+    color: #cbd5e1;
+    flex: 1;
+}
+
+.inv-dash-legend-pct {
+    font-size: 0.75rem;
+    color: rgba(203,213,225,0.6);
+    font-weight: 600;
+}
+
 
 
 

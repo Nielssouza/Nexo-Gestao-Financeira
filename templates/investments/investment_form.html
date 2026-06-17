@@ -1,20 +1,20 @@
 {% extends "base.html" %}
 
-{% block title %}Objetivo | Nexo{% endblock %}
+{% block title %}{% if object %}Editar investimento{% else %}Novo investimento{% endif %} | Nexo{% endblock %}
 {% block page_header %}{% endblock %}
 {% block main_class %}px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-36{% endblock %}
 
 {% block content %}
 <section class="app-page space-y-4">
     <div>
-        <h1 class="app-title">{% if object %}Editar objetivo{% else %}Novo objetivo{% endif %}</h1>
-        <p class="app-subtitle">Informe a meta de reserva para acompanhar no dashboard.</p>
+        <h1 class="app-title">{% if object %}Editar investimento{% else %}Novo investimento{% endif %}</h1>
+        <p class="app-subtitle">Informe os dados do ativo ou aplicacao.</p>
     </div>
 
     <form method="post" class="card space-y-4">
         {% include "partials/form_fields.html" %}
         <div class="grid grid-cols-2 gap-2">
-            <a href="{% url 'goals:list' %}" class="app-btn-secondary text-center">Cancelar</a>
+            <a href="{% url 'investments:list' %}" class="app-btn-secondary text-center">Cancelar</a>
             <button type="submit" class="app-btn-primary">Salvar</button>
         </div>
     </form>

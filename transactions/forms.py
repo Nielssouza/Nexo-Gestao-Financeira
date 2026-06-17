@@ -1,6 +1,5 @@
 from datetime import date
 from decimal import Decimal, InvalidOperation
-import json
 import re
 
 from django import forms
@@ -217,10 +216,6 @@ class QuickTransactionForm(TransactionForm):
         if not self.instance.pk and not self.is_bound:
             self.fields["recurrence_type"].initial = Transaction.RecurrenceType.ONCE
 
-    def get_account_types_json(self):
-        qs = self.fields["account"].queryset
-        return json.dumps({str(acc.pk): acc.account_type for acc in qs})
-
     def clean(self):
         cleaned_data = super().clean()
         recurrence_type = cleaned_data.get("recurrence_type")
@@ -233,15 +228,6 @@ class QuickTransactionForm(TransactionForm):
                 )
         else:
             cleaned_data["installment_count"] = None
-
-        account = cleaned_data.get("account")
-        transaction_type = cleaned_data.get("transaction_type")
-        if account and transaction_type == Transaction.TransactionType.INCOME:
-            if account.account_type == "card":
-                self.add_error(
-                    "transaction_type",
-                    "Receitas nao podem ser lancadas em cartao de credito.",
-                )
 
         return cleaned_data
 

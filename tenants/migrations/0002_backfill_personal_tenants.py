@@ -11,8 +11,6 @@ DOMAIN_MODELS = (
     ("transactions", "Transaction"),
     ("shopping", "ShoppingList"),
     ("shopping", "ShoppingItem"),
-    ("goals", "SavingGoal"),
-    ("goals", "GoalEntry"),
 )
 
 
@@ -76,7 +74,6 @@ class Migration(migrations.Migration):
         ("categories", "0002_remove_category_unique_category_name_type_per_user_and_more"),
         ("transactions", "0010_remove_closedmonth_unique_closed_month_per_user_and_more"),
         ("shopping", "0004_remove_shoppinglist_unique_shopping_list_name_per_user_and_more"),
-        ("goals", "0002_remove_goalentry_goals_goale_user_id_701db0_idx_and_more"),
     ]
 
     operations = [

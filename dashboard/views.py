@@ -13,7 +13,7 @@ from common.balance import (
     calculate_monthly_balance,
     calculate_user_balance,
 )
-from goals.models import SavingGoal
+from investments.models import Investment, InvestmentEntry
 from transactions.models import Transaction
 
 
@@ -298,22 +298,53 @@ class DashboardContextMixin(LoginRequiredMixin):
             category_total,
         )
 
-        active_goal = (
-            SavingGoal.objects.filter(tenant=tenant, is_active=True)
-            .order_by("-updated_at", "-created_at")
-            .first()
+        active_investments = Investment.objects.filter(tenant=tenant, is_active=True)
+        investment_count = active_investments.count()
+
+        investment_entries = InvestmentEntry.objects.filter(
+            tenant=tenant,
+            investment__is_active=True,
         )
+        total_invested = investment_entries.filter(
+            entry_type=InvestmentEntry.EntryType.DEPOSIT
+        ).aggregate(total=Coalesce(Sum("amount"), Decimal("0.00")))["total"]
+        total_withdrawn = investment_entries.filter(
+            entry_type=InvestmentEntry.EntryType.WITHDRAWAL
+        ).aggregate(total=Coalesce(Sum("amount"), Decimal("0.00")))["total"]
+        total_earnings = investment_entries.filter(
+            entry_type__in=[InvestmentEntry.EntryType.DIVIDEND, InvestmentEntry.EntryType.YIELD]
+        ).aggregate(total=Coalesce(Sum("amount"), Decimal("0.00")))["total"]
+        net_invested = total_invested - total_withdrawn
 
-        goal_saved = Decimal("0.00")
-        goal_target = Decimal("0.00")
-        goal_progress = Decimal("0.00")
-        goal_remaining = Decimal("0.00")
-
-        if active_goal:
-            goal_saved = active_goal.total_saved
-            goal_target = active_goal.target_amount
-            goal_progress = active_goal.progress_percent
-            goal_remaining = active_goal.remaining_amount
+        type_colors = {
+            "stocks": "#7c3aed",
+            "fii": "#06b6d4",
+            "fixed_income": "#22c55e",
+            "crypto": "#f59e0b",
+            "savings": "#38bdf8",
+            "emergency": "#f87171",
+            "other": "#94a3b8",
+        }
+        inv_by_type_rows = (
+            investment_entries.filter(entry_type=InvestmentEntry.EntryType.DEPOSIT)
+            .values("investment__investment_type")
+            .annotate(total=Coalesce(Sum("amount"), Decimal("0.00")))
+            .order_by("-total")
+        )
+        inv_by_type = []
+        for row in inv_by_type_rows:
+            itype = row["investment__investment_type"] or "other"
+            amount = row["total"] or Decimal("0.00")
+            if amount <= 0:
+                continue
+            pct = float((amount / total_invested * 100)) if total_invested > 0 else 0.0
+            inv_by_type.append({
+                "type": itype,
+                "label": dict(Investment.InvestmentType.choices).get(itype, itype),
+                "amount": amount,
+                "pct": round(pct, 1),
+                "color": type_colors.get(itype, "#94a3b8"),
+            })
 
         selected_month_label, prev_month_query, next_month_query = self._build_month_navigation(
             selected_month
@@ -346,11 +377,12 @@ class DashboardContextMixin(LoginRequiredMixin):
             "due_overdue_count": due_overdue_count,
             "category_segments": category_segments,
             "category_donut_style": category_donut_style,
-            "active_goal": active_goal,
-            "goal_saved": goal_saved,
-            "goal_target": goal_target,
-            "goal_progress": goal_progress,
-            "goal_remaining": goal_remaining,
+            "investment_count": investment_count,
+            "total_invested": total_invested,
+            "total_withdrawn": total_withdrawn,
+            "total_earnings": total_earnings,
+            "net_invested": net_invested,
+            "inv_by_type": inv_by_type,
         }
 
 

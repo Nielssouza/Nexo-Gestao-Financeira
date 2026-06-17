@@ -72,18 +72,6 @@
         };
 
         const accountField = form.querySelector('[name="account"]');
-        const accountTypes = {{ form.get_account_types_json }};
-        const incomeOption = txTypeField ? Array.from(txTypeField.options).find(function (o) { return o.value === "income"; }) : null;
-
-        const syncIncomeAvailability = function () {
-            if (!txTypeField || !accountField || !incomeOption) return;
-            const isCard = (accountTypes[accountField.value] || "") === "card";
-            incomeOption.disabled = isCard;
-            if (isCard && txTypeField.value === "income") {
-                txTypeField.value = "expense";
-                toggleTransfer();
-            }
-        };
 
         recurrenceField.addEventListener("change", toggleFields);
         if (txTypeField) {
@@ -91,10 +79,8 @@
         }
         if (accountField) {
             accountField.addEventListener("change", syncDestinationOptions);
-            accountField.addEventListener("change", syncIncomeAvailability);
         }
         toggleFields();
         toggleTransfer();
-        syncIncomeAvailability();
     })();
 </script>

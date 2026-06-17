@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% load formatters %}
+
+{% block title %}Investimentos | Nexo{% endblock %}
+{% block page_header %}{% endblock %}
+{% block main_class %}px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-36{% endblock %}
+
+{% block content %}
+<section class="app-page space-y-4">
+    <div class="flex items-center justify-between gap-3">
+        <div>
+            <h1 class="app-title">Investimentos</h1>
+            <p class="app-subtitle">Acompanhe seus aportes e rendimentos.</p>
+        </div>
+        <a href="{% url 'investments:create' %}" class="app-top-action">Novo</a>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <p class="app-form-error" style="border-color: rgba(74,222,128,0.35); background: rgba(20,83,45,0.25); color: #bbf7d0;">{{ message }}</p>
+        {% endfor %}
+    {% endif %}
+
+    {% if investments %}
+        <div class="space-y-3">
+            {% for inv in investments %}
+                <article class="card space-y-3">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <p class="app-item-title">{{ inv.name }}</p>
+                            <p class="app-item-meta">
+                                {{ inv.get_investment_type_display }}
+                                {% if inv.broker %} · {{ inv.broker }}{% endif %}
+                            </p>
+                        </div>
+                        {% if inv.is_active %}
+                            <span class="badge badge-income">Ativo</span>
+                        {% else %}
+                            <span class="badge badge-expense">Pausado</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="inv-summary-row">
+                        <div class="inv-summary-item">
+                            <span class="inv-summary-label">Aportado</span>
+                            <span class="inv-summary-value" data-sensitive-value data-mask="R$ ****">{{ inv.total_invested|brl }}</span>
+                        </div>
+                        <div class="inv-summary-item">
+                            <span class="inv-summary-label">Resgatado</span>
+                            <span class="inv-summary-value inv-summary-value-withdrawn" data-sensitive-value data-mask="R$ ****">{{ inv.total_withdrawn|brl }}</span>
+                        </div>
+                        <div class="inv-summary-item">
+                            <span class="inv-summary-label">Rendimentos</span>
+                            <span class="inv-summary-value inv-summary-value-earnings" data-sensitive-value data-mask="R$ ****">{{ inv.total_earnings|brl }}</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <a href="{% url 'investments:detail' inv.pk %}" class="app-btn-secondary text-center">Lancamentos</a>
+                        <a href="{% url 'investments:update' inv.pk %}" class="app-btn-primary text-center">Editar</a>
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        <article class="card app-empty-card">Nenhum investimento cadastrado ainda.</article>
+        <a href="{% url 'investments:create' %}" class="app-btn-primary w-full justify-center">Adicionar primeiro investimento</a>
+    {% endif %}
+</section>
+{% endblock %}
