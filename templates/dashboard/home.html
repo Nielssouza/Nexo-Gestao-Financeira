@@ -34,6 +34,7 @@
 
     <div class="fab-speed-dial" id="fab-speed-dial">
         <button
+            type="button"
             class="dash-center-fab"
             id="fab-main-btn"
             onclick="toggleFabDial()"
@@ -95,7 +96,14 @@
 {% endblock %}
 
 {% block content %}
-<div id="post-login-loader-overlay" class="post-login-loader-overlay{% if not show_post_login_loader %} hidden{% endif %}" role="status" aria-live="polite" aria-label="Carregando painel">
+<div
+    id="post-login-loader-overlay"
+    class="post-login-loader-overlay{% if not show_post_login_loader %} hidden{% endif %}"
+    data-show-post-login-loader="{{ show_post_login_loader|yesno:'true,false' }}"
+    role="status"
+    aria-live="polite"
+    aria-label="Carregando painel"
+>
     <div class="post-login-loader-card">
         <div class="post-login-loader-ring" aria-hidden="true"></div>
         <p class="post-login-loader-title">Bem-vindo ao Nexo</p>
@@ -127,10 +135,10 @@
                     {% endif %}
                 </button>
 
-                <div class="dash-due-panel hidden" id="dash-due-menu-panel" role="menu">
+                <div class="dash-due-panel hidden" id="dash-due-menu-panel">
                     <p class="dash-due-title">Vencimentos</p>
                     <p class="dash-due-meta">
-                        {{ due_notifications_count }} para os proximos 30 dias
+                        {{ due_notifications_count }} neste mês
                         {% if due_overdue_count %}
                             | {{ due_overdue_count }} atrasada(s)
                         {% endif %}
@@ -186,7 +194,7 @@
                     <span class="dash-gift-dot"></span>
                 </button>
 
-                <div class="dash-user-menu-panel hidden" id="dash-user-menu-panel" role="menu">
+                <div class="dash-user-menu-panel hidden" id="dash-user-menu-panel">
                     <p class="dash-user-menu-name">{{ user.get_full_name|default:user.email|default:user.username }}</p>
                     <p class="dash-user-menu-meta">{{ user.email|default:"Sessao ativa" }}</p>
                     <div class="dash-user-menu-actions">
@@ -336,7 +344,7 @@
         <a href="{% url 'dashboard:charts' %}?month={{ selected_month_value }}" class="dash-category-card-link" aria-label="Abrir graficos">
             <article class="dash-category-card dash-category-card-clickable">
                 <div class="dash-donut-wrap" aria-hidden="true">
-                    <div class="dash-donut" style="background: {{ category_donut_style }};"></div>
+                    <div class="dash-donut" data-inline-background="{{ category_donut_style }}"></div>
                     <div class="dash-donut-hole"></div>
                 </div>
 
@@ -344,7 +352,7 @@
                     {% if category_segments %}
                         {% for item in category_segments %}
                             <div class="dash-legend-item">
-                                <span class="dash-legend-dot" style="background-color: {{ item.color }};"></span>
+                                <span class="dash-legend-dot" data-inline-background-color="{{ item.color }}"></span>
                                 <span class="dash-legend-name">{{ item.name }}</span>
                                 <span class="dash-legend-amount" data-sensitive-value data-mask="R$ ****">{{ item.total|brl }}</span>
                             </div>
@@ -391,14 +399,14 @@
             {% if inv_by_type %}
             <div class="inv-dash-bar-wrap">
                 {% for item in inv_by_type %}
-                    <div class="inv-dash-bar-segment" style="width:{{ item.pct }}%; background:{{ item.color }};" title="{{ item.label }}: {{ item.pct }}%"></div>
+                    <div class="inv-dash-bar-segment" data-segment-width="{{ item.pct }}" data-segment-color="{{ item.color }}" title="{{ item.label }}: {{ item.pct }}%"></div>
                 {% endfor %}
             </div>
 
             <div class="inv-dash-legend">
                 {% for item in inv_by_type %}
                 <div class="inv-dash-legend-item">
-                    <span class="inv-dash-legend-dot" style="background:{{ item.color }};"></span>
+                    <span class="inv-dash-legend-dot" data-inline-background="{{ item.color }}"></span>
                     <span class="inv-dash-legend-name">{{ item.label }}</span>
                     <span class="inv-dash-legend-pct">{{ item.pct }}%</span>
                 </div>
@@ -425,11 +433,25 @@
 {% block extra_js %}
 <script>
     (function () {
-        const shouldShowPostLoginLoader = {{ show_post_login_loader|yesno:"true,false" }};
         const postLoginOverlay = document.getElementById("post-login-loader-overlay");
+        const shouldShowPostLoginLoader = postLoginOverlay?.dataset.showPostLoginLoader === "true";
         const postLoginBar = document.getElementById("post-login-loader-bar");
         const postLoginStep = document.getElementById("post-login-loader-step");
         const dashMainScreen = document.getElementById("dash-main-screen");
+
+        document.querySelectorAll("[data-inline-background]").forEach((element) => {
+            element.style.background = element.dataset.inlineBackground || "";
+        });
+
+        document.querySelectorAll("[data-inline-background-color]").forEach((element) => {
+            element.style.backgroundColor = element.dataset.inlineBackgroundColor || "";
+        });
+
+        document.querySelectorAll("[data-segment-width]").forEach((element) => {
+            const width = element.dataset.segmentWidth || "0";
+            element.style.width = `${width}%`;
+            element.style.background = element.dataset.segmentColor || "";
+        });
 
         const runPostLoginLoader = () => {
             if (!postLoginOverlay || !postLoginBar || !postLoginStep) {

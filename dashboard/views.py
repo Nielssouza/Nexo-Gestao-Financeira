@@ -244,14 +244,14 @@ class DashboardContextMixin(LoginRequiredMixin):
             .order_by("-date", "-created_at")[:6]
         )
 
-        due_window_end = today + timedelta(days=30)
         due_notifications_qs = (
             Transaction.objects.filter(
                 tenant=tenant,
                 transaction_type=Transaction.TransactionType.EXPENSE,
                 is_cleared=False,
                 is_ignored=False,
-                date__lte=due_window_end,
+                date__year=selected_month.year,
+                date__month=selected_month.month,
             )
             .select_related("account", "category")
             .order_by("date", "created_at")
