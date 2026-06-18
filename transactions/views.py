@@ -467,12 +467,11 @@ class StatementViewBase(LoginRequiredMixin, TemplateView):
         context["today"] = timezone.localdate()
         context["current_balance"] = current_balance
         context["monthly_balance"] = monthly_balance
-        context["credit_card_expense_total"] = credit_card_open_total
+        credit_card_limit = calculate_credit_card_available_limit(self.request.tenant, selected_month)
         context["credit_card_open_total"] = credit_card_open_total
         context["credit_card_month_total"] = credit_card_month_total
         context["credit_card_limit"] = credit_card_limit
-        context["credit_card_available"] = credit_card_available
-        consolidated_balance = monthly_balance + credit_card_available
+        consolidated_balance = monthly_balance + credit_card_limit
         context["consolidated_balance"] = consolidated_balance
 
         pending_base = Transaction.objects.filter(
