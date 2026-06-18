@@ -20,10 +20,6 @@
         <div class="txn-balance-item">
             <span class="txn-balance-label">Limite do cartão</span>
             <strong class="txn-balance-value txn-balance-value-card-limit{% if credit_card_limit < 0 %} txn-balance-value-negative{% endif %}">{{ credit_card_limit|brl }}</strong>
-            <div class="txn-balance-mini-card{% if credit_card_available < 0 %} txn-balance-mini-card-negative{% endif %}">
-                <span class="txn-balance-mini-label">Disponível</span>
-                <span class="txn-balance-mini-value{% if credit_card_available < 0 %} txn-balance-mini-value-negative{% endif %}">{{ credit_card_available|brl }}</span>
-            </div>
         </div>
         <div class="txn-balance-item">
             <span class="txn-balance-label">Total cartão</span>
@@ -32,10 +28,6 @@
         <div class="txn-balance-item" style="grid-column: span 2;">
             <span class="txn-balance-label">Balanço consolidado</span>
             <strong class="txn-balance-value txn-balance-value-consolidated{% if consolidated_balance < 0 %} txn-balance-value-negative{% endif %}">{{ consolidated_balance|brl }}</strong>
-            <div class="txn-balance-mini-card{% if balance_after_pending < 0 %} txn-balance-mini-card-negative{% endif %}">
-                <span class="txn-balance-mini-label">Disponível</span>
-                <span class="txn-balance-mini-value{% if balance_after_pending < 0 %} txn-balance-mini-value-negative{% endif %}" data-sensitive-value data-mask="R$ ****">{{ balance_after_pending|brl }}</span>
-            </div>
         </div>
     </div>
 </article>
