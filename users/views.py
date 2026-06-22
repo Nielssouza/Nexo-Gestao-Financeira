@@ -1,12 +1,21 @@
 from django.conf import settings
 from django.contrib import messages
+from django.contrib.auth import get_user_model
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.views import LoginView, LogoutView
-from django.shortcuts import redirect
+from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
-from django.views.generic import CreateView
+from django.views.generic import CreateView, ListView, View
 from uuid import uuid4
 
 from users.forms import RegisterForm, StyledAuthenticationForm
+
+User = get_user_model()
+
+
+class SuperuserRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
+    def test_func(self):
+        return self.request.user.is_superuser
 
 
 class RegisterView(CreateView):
@@ -39,6 +48,23 @@ class UserLoginView(LoginView):
     def form_valid(self, form):
         self.request.session["show_post_login_loader"] = True
         return super().form_valid(form)
+
+
+class PendingUsersView(SuperuserRequiredMixin, ListView):
+    template_name = "users/pending_users.html"
+    context_object_name = "pending_users"
+
+    def get_queryset(self):
+        return User.objects.filter(is_active=False).order_by("date_joined")
+
+
+class ApproveUserView(SuperuserRequiredMixin, View):
+    def post(self, request, pk):
+        user = get_object_or_404(User, pk=pk, is_active=False)
+        user.is_active = True
+        user.save(update_fields=["is_active"])
+        messages.success(request, f"Acesso liberado para {user.email or user.username}.")
+        return redirect("users:pending")
 
 
 class UserLogoutView(LogoutView):

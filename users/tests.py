@@ -231,3 +231,150 @@ class UserAuthFlowTests(TestCase):
         self.assertContains(response, "Cadastro individual por e-mail")
         self.assertContains(response, "1 cadastro por e-mail.")
         self.assertContains(response, "Depois da aprovacao, o login e feito com esse mesmo e-mail.")
+
+
+_SIMPLE_STATIC = {
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+}
+
+
+@override_settings(STORAGES=_SIMPLE_STATIC)
+class PendingUsersViewTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.superuser = User.objects.create_superuser(
+            username="superadmin",
+            email="superadmin@example.com",
+            password="Strong-pass-123",
+        )
+        self.regular_user = User.objects.create_user(
+            username="regular",
+            email="regular@example.com",
+            password="Strong-pass-123",
+        )
+        self.pending_user = User.objects.create_user(
+            username="pending",
+            email="pending@example.com",
+            password="Strong-pass-123",
+            is_active=False,
+        )
+        self.pending_url = reverse("users:pending")
+
+    def test_anonymous_user_is_redirected_to_login(self):
+        response = self.client.get(self.pending_url)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse("users:login"), response.headers["Location"])
+
+    def test_non_superuser_gets_403(self):
+        self.client.force_login(self.regular_user)
+
+        response = self.client.get(self.pending_url)
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_superuser_can_access_pending_list(self):
+        self.client.force_login(self.superuser)
+
+        response = self.client.get(self.pending_url)
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_pending_users_are_listed(self):
+        self.client.force_login(self.superuser)
+
+        response = self.client.get(self.pending_url)
+
+        self.assertContains(response, self.pending_user.email)
+
+    def test_active_users_are_not_listed(self):
+        self.client.force_login(self.superuser)
+
+        response = self.client.get(self.pending_url)
+
+        self.assertNotContains(response, self.regular_user.email)
+        self.assertNotContains(response, self.superuser.email)
+
+    def test_empty_state_when_no_pending_users(self):
+        self.pending_user.is_active = True
+        self.pending_user.save()
+        self.client.force_login(self.superuser)
+
+        response = self.client.get(self.pending_url)
+
+        self.assertContains(response, "Nenhum cadastro pendente")
+
+
+@override_settings(STORAGES=_SIMPLE_STATIC)
+class ApproveUserViewTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.superuser = User.objects.create_superuser(
+            username="superadmin",
+            email="superadmin@example.com",
+            password="Strong-pass-123",
+        )
+        self.regular_user = User.objects.create_user(
+            username="regular",
+            email="regular@example.com",
+            password="Strong-pass-123",
+        )
+        self.pending_user = User.objects.create_user(
+            username="pending",
+            email="pending@example.com",
+            password="Strong-pass-123",
+            is_active=False,
+        )
+
+    def _approve_url(self, pk):
+        return reverse("users:approve", kwargs={"pk": pk})
+
+    def test_anonymous_user_is_redirected_to_login(self):
+        response = self.client.post(self._approve_url(self.pending_user.pk))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse("users:login"), response.headers["Location"])
+
+    def test_non_superuser_gets_403(self):
+        self.client.force_login(self.regular_user)
+
+        response = self.client.post(self._approve_url(self.pending_user.pk))
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_superuser_can_approve_pending_user(self):
+        self.client.force_login(self.superuser)
+
+        self.client.post(self._approve_url(self.pending_user.pk))
+
+        self.pending_user.refresh_from_db()
+        self.assertTrue(self.pending_user.is_active)
+
+    def test_approve_redirects_to_pending_list(self):
+        self.client.force_login(self.superuser)
+
+        response = self.client.post(self._approve_url(self.pending_user.pk))
+
+        self.assertRedirects(response, reverse("users:pending"))
+
+    def test_approve_shows_success_message(self):
+        self.client.force_login(self.superuser)
+
+        response = self.client.post(self._approve_url(self.pending_user.pk), follow=True)
+
+        self.assertContains(response, "Acesso liberado para")
+
+    def test_approving_already_active_user_returns_404(self):
+        self.client.force_login(self.superuser)
+
+        response = self.client.post(self._approve_url(self.regular_user.pk))
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_get_request_is_not_allowed(self):
+        self.client.force_login(self.superuser)
+
+        response = self.client.get(self._approve_url(self.pending_user.pk))
+
+        self.assertEqual(response.status_code, 405)

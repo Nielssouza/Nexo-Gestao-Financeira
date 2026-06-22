@@ -201,6 +201,9 @@
                         {% if user.is_staff %}
                             <a href="{% url 'admin:index' %}" class="dash-user-menu-link">Painel admin</a>
                         {% endif %}
+                        {% if user.is_superuser %}
+                            <a href="{% url 'users:pending' %}" class="dash-user-menu-link">Usuários pendentes</a>
+                        {% endif %}
                         <button type="button" class="dash-user-menu-link" data-view-mode-toggle>Modo navegador</button>
                         <form method="post" action="{% url 'users:logout' %}">
                             {% csrf_token %}
