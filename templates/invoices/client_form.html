@@ -1,14 +1,19 @@
 {% extends "base.html" %}
 
-{% block title %}Novo Cliente | Nexo{% endblock %}
+{% block title %}{% if is_edit %}Editar Cliente{% else %}Novo Cliente{% endif %} | Nexo{% endblock %}
 {% block page_header %}{% endblock %}
 {% block main_class %}px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-36{% endblock %}
 
 {% block content %}
 <section class="app-page space-y-4">
-    <div>
-        <h1 class="app-title">Novo cliente</h1>
-        <p class="app-subtitle">Cadastre para usar em futuras faturas.</p>
+    <div class="flex items-center gap-3">
+        <a href="{% if is_edit %}{% url 'invoices:client-list' %}{% else %}javascript:history.back(){% endif %}" class="text-slate-400 hover:text-slate-200">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        </a>
+        <div>
+            <h1 class="app-title mb-0">{% if is_edit %}Editar cliente{% else %}Novo cliente{% endif %}</h1>
+            <p class="app-subtitle mt-0.5">{% if is_edit %}Atualize os dados do cliente.{% else %}Cadastre para usar em futuras faturas.{% endif %}</p>
+        </div>
     </div>
 
     <form method="post" class="card space-y-4">
@@ -27,8 +32,8 @@
         </div>
         {% endfor %}
         <div class="grid grid-cols-2 gap-2">
-            <a href="{% url 'invoices:create' %}" class="app-btn-secondary text-center">Cancelar</a>
-            <button type="submit" class="app-btn-primary">Salvar cliente</button>
+            <a href="{% if is_edit %}{% url 'invoices:client-list' %}{% else %}{% url 'invoices:create' %}{% endif %}" class="app-btn-secondary text-center">Cancelar</a>
+            <button type="submit" class="app-btn-primary">{% if is_edit %}Salvar alterações{% else %}Salvar cliente{% endif %}</button>
         </div>
     </form>
 </section>
@@ -36,7 +41,23 @@
     document.addEventListener('input', function(e) {
         const field = e.target.closest('#id_document');
         if (!field) return;
-        const digits = field.value.replace(/\D/g, '');
+        
+        let v = field.value.replace(/\D/g, "");
+        if (v.length > 14) v = v.substring(0, 14);
+        let formatted = v;
+        if (v.length <= 11) {
+            formatted = v.replace(/(\d{3})(\d)/, "$1.$2")
+                         .replace(/(\d{3})(\d)/, "$1.$2")
+                         .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+        } else {
+            formatted = v.replace(/^(\d{2})(\d)/, "$1.$2")
+                         .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+                         .replace(/\.(\d{3})(\d)/, ".$1/$2")
+                         .replace(/(\d{4})(\d)/, "$1-$2");
+        }
+        field.value = formatted;
+
+        const digits = v;
         if (digits.length !== 14) return;
 
         field.disabled = true;
@@ -49,6 +70,7 @@
                 const set = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
                 set('id_name',    data.name);
                 set('id_email',   data.email);
+                set('id_phone',   data.phone);
                 set('id_address', data.address);
                 set('id_city',    data.city);
             })

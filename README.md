@@ -66,3 +66,15 @@ $env:USE_SQLITE="1"
 ```
 - O botao `+` abre modal HTMX para inclusao rapida de transacoes sem reload.
 - O layout usa bottom navigation: Dashboard, Transacoes, Contas e Categorias.
+
+## Testes automatizados
+- Rodar a suite local:
+```powershell
+python manage.py test
+```
+- Validar configuracao Django antes dos testes:
+```powershell
+python manage.py check
+```
+- CI:
+  O workflow [`.github/workflows/tests.yml`](.github/workflows/tests.yml) executa `check` e `test` automaticamente em `push` e `pull request`, usando SQLite.

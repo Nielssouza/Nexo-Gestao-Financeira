@@ -213,9 +213,6 @@ class TransactionUpdateView(
         )
         target_queryset = self.get_scope_queryset(reference_transaction, scope)
 
-        if not self.ensure_month_unlocked(target_queryset, form=form):
-            return self.form_invalid(form)
-
         response = super().form_valid(form)
 
         if scope == self.SCOPE_ALL:
@@ -274,10 +271,6 @@ class TransactionDeleteView(
                 request,
                 "Lancamentos baixados nao podem ser excluidos.",
             )
-            context = self.get_context_data(object=self.object)
-            return self.render_to_response(context)
-
-        if not self.ensure_month_unlocked(target_queryset):
             context = self.get_context_data(object=self.object)
             return self.render_to_response(context)
 
@@ -460,6 +453,7 @@ class StatementViewBase(LoginRequiredMixin, TemplateView):
         ).aggregate(total=Coalesce(Sum("amount"), Decimal("0.00")))["total"]
 
         credit_card_limit = calculate_credit_card_available_limit(self.request.tenant, selected_month)
+        context["credit_card_expense_total"] = credit_card_open_total
         context["credit_card_open_total"] = credit_card_open_total
         context["credit_card_month_total"] = credit_card_month_total
         context["credit_card_limit"] = credit_card_limit

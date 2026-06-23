@@ -11,6 +11,13 @@ class Tenant(models.Model):
         on_delete=models.CASCADE,
         related_name="owned_tenants",
     )
+    document = models.CharField("CNPJ/CPF", max_length=20, blank=True)
+    email = models.EmailField("E-mail comercial", blank=True)
+    phone = models.CharField("Telefone", max_length=20, blank=True)
+    address = models.CharField("Endereço", max_length=200, blank=True)
+    city = models.CharField("Cidade e UF", max_length=100, blank=True)
+    logo = models.ImageField("Logo da empresa", upload_to="tenant_logos/", blank=True, null=True)
+    
     is_active = models.BooleanField("Ativo", default=True)
     created_at = models.DateTimeField("Criado em", auto_now_add=True)
     updated_at = models.DateTimeField("Atualizado em", auto_now=True)

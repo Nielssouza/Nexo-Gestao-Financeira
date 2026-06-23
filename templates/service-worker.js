@@ -1,25 +1,3 @@
-{% if app_debug %}
-self.addEventListener("install", () => {
-    self.skipWaiting();
-});
-
-self.addEventListener("activate", (event) => {
-    event.waitUntil(
-        (async () => {
-            const cacheNames = await caches.keys();
-            await Promise.all(cacheNames.map((cacheName) => caches.delete(cacheName)));
-            await self.registration.unregister();
-            const clients = await self.clients.matchAll({
-                type: "window",
-                includeUncontrolled: true,
-            });
-            clients.forEach((client) => client.navigate(client.url));
-        })()
-    );
-});
-
-self.addEventListener("fetch", () => {});
-{% else %}
 const CACHE_NAME = "nexo-v4";
 const STATIC_ASSETS = [
     "/manifest.json",
@@ -89,4 +67,3 @@ self.addEventListener("fetch", (event) => {
     // Dynamic HTML/routes: always network-first to keep balances current.
     event.respondWith(fetch(event.request));
 });
-{% endif %}

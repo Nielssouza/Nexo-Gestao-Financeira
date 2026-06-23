@@ -21,6 +21,7 @@ class Client(models.Model):
     name = models.CharField("Nome", max_length=200)
     document = models.CharField("CPF / CNPJ", max_length=20, blank=True)
     email = models.EmailField("E-mail", blank=True)
+    phone = models.CharField("Telefone", max_length=20, blank=True)
     address = models.CharField("Endereço", max_length=300, blank=True)
     city = models.CharField("Cidade / UF", max_length=100, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -71,6 +72,7 @@ class Invoice(models.Model):
     client_name = models.CharField("Nome do tomador", max_length=200)
     client_document = models.CharField("CPF / CNPJ", max_length=20, blank=True)
     client_email = models.EmailField("E-mail do tomador", blank=True)
+    client_phone = models.CharField("Telefone", max_length=20, blank=True)
     client_address = models.CharField("Endereço", max_length=300, blank=True)
     client_city = models.CharField("Cidade / UF", max_length=100, blank=True)
 
@@ -117,6 +119,14 @@ class Invoice(models.Model):
         blank=True,
         related_name="invoice",
     )
+    expected_account = models.ForeignKey(
+        "accounts.Account",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Conta prevista",
+        help_text="Conta onde a receita deverá ser lançada ao confirmar o pagamento.",
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -133,7 +143,7 @@ class Invoice(models.Model):
         verbose_name_plural = "Faturas"
 
     def __str__(self):
-        return f"NFS-e {self.number_display} — {self.client_name}"
+        return f"Fatura {self.number_display} — {self.client_name}"
 
     @property
     def number_display(self):

@@ -1,2 +1,2 @@
 release: python manage.py migrate --noinput
-web: gunicorn nexo.wsgi --log-file -
+web: gunicorn nexo.wsgi --workers 3 --threads 2 --worker-class gthread --log-file -

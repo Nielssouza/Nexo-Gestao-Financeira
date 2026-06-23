@@ -93,3 +93,36 @@ class TenantIsolationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, shared_account.name)
         self.assertNotContains(response, private_account.name)
+
+class TenantViewsTest(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username="tenant-updater",
+            password="123",
+        )
+        self.tenant = self.user.tenant_memberships.get().tenant
+        self.tenant.name = "Old Name"
+        self.tenant.slug = "old-name"
+        self.tenant.save()
+        self.client.login(username="tenant-updater", password="123")
+
+    def test_tenant_update_view_get(self):
+        response = self.client.get(reverse("tenants:update"))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, "tenants/tenant_form.html")
+
+    def test_tenant_update_view_post(self):
+        response = self.client.post(reverse("tenants:update"), {
+            "name": "New Name",
+            "document": "12.345.678/0001-99",
+            "email": "contact@newname.com",
+            "phone": "11999999999",
+            "address": "Rua Teste, 123",
+            "city": "São Paulo",
+        })
+        self.assertEqual(response.status_code, 302)
+        
+        self.tenant.refresh_from_db()
+        self.assertEqual(self.tenant.name, "New Name")
+        self.assertEqual(self.tenant.document, "12.345.678/0001-99")
+        self.assertEqual(self.tenant.email, "contact@newname.com")

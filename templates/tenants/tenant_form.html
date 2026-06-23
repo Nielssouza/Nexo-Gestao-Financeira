@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}Perfil da Empresa | Nexo{% endblock %}
+
+{% block content %}
+<section class="app-page space-y-4 max-w-2xl mx-auto">
+    <div class="flex items-center gap-3">
+        <a href="{% url 'invoices:list' %}" class="text-slate-400 hover:text-slate-200">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        </a>
+        <h1 class="app-title mb-0">Perfil da Empresa</h1>
+    </div>
+
+    <form method="post" enctype="multipart/form-data" class="space-y-4">
+        {% csrf_token %}
+        
+        <div class="card space-y-4">
+            <p class="app-field-label" style="font-size:0.7rem;letter-spacing:.06em;text-transform:uppercase;color:#7c8fa6;">Logo da Empresa</p>
+            <div class="flex items-center gap-4">
+                <div id="logo-preview-wrap" class="w-20 h-20 rounded-xl overflow-hidden bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                    {% if form.instance.logo %}
+                        <img id="logo-preview" src="{{ form.instance.logo.url }}" alt="Logo" class="w-full h-full object-contain">
+                    {% else %}
+                        <svg id="logo-placeholder" class="w-8 h-8 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                        <img id="logo-preview" src="" alt="Logo" class="w-full h-full object-contain hidden">
+                    {% endif %}
+                </div>
+                <div class="space-y-2 flex-1">
+                    <input type="file" id="id_logo" name="logo" accept="image/*" class="hidden">
+                    <label for="id_logo" class="app-btn-secondary py-2 px-4 text-sm w-full text-center cursor-pointer block">
+                        {% if form.instance.logo %}Trocar logo{% else %}Escolher imagem{% endif %}
+                    </label>
+                    {% if form.instance.logo %}
+                    <button type="button" id="btn-remove-logo" class="text-xs text-red-400 hover:text-red-300 w-full text-center transition-colors">Remover logo</button>
+                    <input type="hidden" name="logo-clear" id="logo-clear-input" value="">
+                    {% endif %}
+                    <p class="text-xs text-slate-500">PNG, JPG ou WebP. Máx. 2 MB. Recomendado: fundo transparente.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card space-y-4">
+            <p class="app-field-label" style="font-size:0.7rem;letter-spacing:.06em;text-transform:uppercase;color:#7c8fa6;">Informações Principais</p>
+            <div class="space-y-1">
+                <label for="{{ form.name.id_for_label }}" class="app-field-label">{{ form.name.label }}</label>
+                {{ form.name }}
+                {% for e in form.name.errors %}<p class="app-field-error">{{ e }}</p>{% endfor %}
+            </div>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="space-y-1">
+                    <label for="{{ form.document.id_for_label }}" class="app-field-label">{{ form.document.label }}</label>
+                    {{ form.document }}
+                    {% for e in form.document.errors %}<p class="app-field-error">{{ e }}</p>{% endfor %}
+                </div>
+                <div class="space-y-1">
+                    <label for="{{ form.phone.id_for_label }}" class="app-field-label">{{ form.phone.label }}</label>
+                    {{ form.phone }}
+                    {% for e in form.phone.errors %}<p class="app-field-error">{{ e }}</p>{% endfor %}
+                </div>
+            </div>
+            
+            <div class="space-y-1">
+                <label for="{{ form.email.id_for_label }}" class="app-field-label">{{ form.email.label }}</label>
+                {{ form.email }}
+                {% for e in form.email.errors %}<p class="app-field-error">{{ e }}</p>{% endfor %}
+            </div>
+        </div>
+
+        <div class="card space-y-4">
+            <p class="app-field-label" style="font-size:0.7rem;letter-spacing:.06em;text-transform:uppercase;color:#7c8fa6;">Endereço Comercial</p>
+            <div class="space-y-1">
+                <label for="{{ form.address.id_for_label }}" class="app-field-label">{{ form.address.label }}</label>
+                {{ form.address }}
+                {% for e in form.address.errors %}<p class="app-field-error">{{ e }}</p>{% endfor %}
+            </div>
+            <div class="space-y-1">
+                <label for="{{ form.city.id_for_label }}" class="app-field-label">{{ form.city.label }}</label>
+                {{ form.city }}
+                {% for e in form.city.errors %}<p class="app-field-error">{{ e }}</p>{% endfor %}
+            </div>
+        </div>
+
+        <div class="flex justify-end pt-2">
+            <button type="submit" class="app-btn-primary w-full sm:w-auto">Salvar Alterações</button>
+        </div>
+    </form>
+</section>
+<script>
+    document.getElementById('id_logo').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const preview = document.getElementById('logo-preview');
+        const placeholder = document.getElementById('logo-placeholder');
+        preview.src = URL.createObjectURL(file);
+        preview.classList.remove('hidden');
+        if (placeholder) placeholder.classList.add('hidden');
+    });
+
+    const btnRemove = document.getElementById('btn-remove-logo');
+    if (btnRemove) {
+        btnRemove.addEventListener('click', function() {
+            document.getElementById('logo-clear-input').value = '1';
+            const preview = document.getElementById('logo-preview');
+            preview.src = '';
+            preview.classList.add('hidden');
+            const wrap = document.getElementById('logo-preview-wrap');
+            wrap.innerHTML = '<svg class="w-8 h-8 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>';
+            btnRemove.style.display = 'none';
+        });
+    }
+
+    document.addEventListener('input', function(e) {
+        const field = e.target.closest('#id_document');
+        if (!field) return;
+        
+        let v = field.value.replace(/\D/g, "");
+        if (v.length > 14) v = v.substring(0, 14);
+        let formatted = v;
+        if (v.length <= 11) {
+            formatted = v.replace(/(\d{3})(\d)/, "$1.$2")
+                         .replace(/(\d{3})(\d)/, "$1.$2")
+                         .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+        } else {
+            formatted = v.replace(/^(\d{2})(\d)/, "$1.$2")
+                         .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+                         .replace(/\.(\d{3})(\d)/, ".$1/$2")
+                         .replace(/(\d{4})(\d)/, "$1-$2");
+        }
+        field.value = formatted;
+    });
+
+    // Format on load if there's already a value
+    document.addEventListener('DOMContentLoaded', function() {
+        const docField = document.getElementById('id_document');
+        if (docField && docField.value) {
+            docField.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+    });
+</script>
+{% endblock %}

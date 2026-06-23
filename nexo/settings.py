@@ -107,6 +107,7 @@ MIDDLEWARE = [
     "tenants.middleware.CurrentTenantMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "nexo.middleware.ContentSecurityPolicyMiddleware",
 ] + (["django_browser_reload.middleware.BrowserReloadMiddleware"] if RUNSERVER else [])
 
 ROOT_URLCONF = "nexo.urls"
@@ -197,11 +198,15 @@ TIME_ZONE = "America/Sao_Paulo"
 USE_I18N = True
 
 USE_TZ = True
+USE_THOUSAND_SEPARATOR = True
 
 
 STATIC_URL = "/static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
 
 STORAGES = {
     "default": {
@@ -276,4 +281,25 @@ if LOCAL_DEVELOPMENT:
     CSRF_COOKIE_SECURE = False
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Cache — usa Redis se disponível (necessário para rate limiting em múltiplos dynos),
+# caso contrário cai para memória local (funciona em single-process).
+_redis_url = os.getenv("REDIS_URL", "")
+if _redis_url:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": _redis_url,
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        }
+    }
+
+# Rate limiting (django-ratelimit)
+RATELIMIT_USE_CACHE = "default"
+RATELIMIT_FAIL_OPEN = False  # em caso de falha do cache, bloqueia (seguro)
 

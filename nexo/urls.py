@@ -17,8 +17,11 @@ urlpatterns = [
     path("shopping/", include("shopping.urls")),
     path("investimentos/", include("investments.urls")),
     path("faturas/", include("invoices.urls")),
+    path("empresa/", include("tenants.urls")),
     path("", include("dashboard.urls")),
 ]
 
 if settings.RUNSERVER:
+    from django.conf.urls.static import static
     urlpatterns += [path("__reload__/", include("django_browser_reload.urls"))]
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

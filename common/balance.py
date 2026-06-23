@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 from django.apps import apps
-from django.db.models import Sum
+from django.db.models import Q, Sum
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 
@@ -17,7 +17,9 @@ def _sum_amount(queryset):
 
 
 def tracked_accounts(queryset):
-    return queryset.filter(include_in_balance=True)
+    return queryset.filter(
+        Q(include_in_balance=True) | Q(account_type="card")
+    )
 
 
 def calculate_account_balance(account, cutoff_date=None):
@@ -61,58 +63,54 @@ def calculate_account_balance(account, cutoff_date=None):
 def calculate_user_balance(user, cutoff_date, tenant=None):
     tenant = resolve_tenant(tenant=tenant, user=user)
     account_model = apps.get_model("accounts", "Account")
-    posted_transactions = Transaction.objects.filter(
-        tenant=tenant,
-        is_cleared=True,
-        is_ignored=False,
-        date__lte=cutoff_date,
-    )
-
-    initial_total = tracked_accounts(
+    active_accounts = tracked_accounts(
         account_model.objects.filter(tenant=tenant, is_active=True)
-    ).aggregate(total=Coalesce(Sum("initial_balance"), ZERO))["total"]
-
-    total_income = _sum_amount(
-        posted_transactions.filter(
-            transaction_type=Transaction.TransactionType.INCOME
-        ).filter(account__include_in_balance=True)
     )
-    total_expense = _sum_amount(
-        posted_transactions.filter(
-            transaction_type=Transaction.TransactionType.EXPENSE
-        ).filter(account__include_in_balance=True)
-    )
-    total_outgoing_transfers = _sum_amount(
-        posted_transactions.filter(
-            transaction_type=Transaction.TransactionType.TRANSFER
-        ).filter(account__include_in_balance=True)
-    )
-    total_incoming_transfers = _sum_amount(
-        posted_transactions.filter(
-            transaction_type=Transaction.TransactionType.TRANSFER
-        ).filter(destination_account__include_in_balance=True)
-    )
-
-    return (
-        initial_total
-        + total_income
-        + total_incoming_transfers
-        - total_expense
-        - total_outgoing_transfers
-    )
+    total_balance = ZERO
+    for account in active_accounts:
+        total_balance += calculate_account_balance(account, cutoff_date=cutoff_date)
+    return total_balance
 
 
 def get_credit_card_total_limit(tenant, selected_month):
+    account_model = apps.get_model("accounts", "Account")
+    monthly_limit_model = apps.get_model("accounts", "CardMonthlyLimit")
     transaction_model = apps.get_model("transactions", "Transaction")
+    total_limit = ZERO
 
-    return transaction_model.objects.filter(
+    active_cards = account_model.objects.filter(
         tenant=tenant,
-        account__account_type="card",
-        account__is_active=True,
-        transaction_type="income",
-        date__year=selected_month.year,
-        date__month=selected_month.month,
-    ).aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
+        account_type="card",
+        is_active=True,
+    )
+
+    for card in active_cards:
+        monthly_limit = monthly_limit_model.objects.filter(
+            tenant=tenant,
+            account=card,
+            year=selected_month.year,
+            month=selected_month.month,
+        ).values_list("amount", flat=True).first()
+
+        if monthly_limit is not None:
+            total_limit += monthly_limit
+            continue
+
+        if card.credit_limit is not None:
+            total_limit += card.credit_limit
+            continue
+
+        total_limit += transaction_model.objects.filter(
+            tenant=tenant,
+            account=card,
+            transaction_type=Transaction.TransactionType.INCOME,
+            is_cleared=True,
+            is_ignored=False,
+            date__year=selected_month.year,
+            date__month=selected_month.month,
+        ).aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
+
+    return total_limit
 
 
 def calculate_credit_card_available_limit(tenant, selected_month):

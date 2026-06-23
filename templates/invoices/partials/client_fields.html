@@ -2,7 +2,6 @@
     <label for="id_client_name" class="app-field-label">Nome do tomador</label>
     <input type="text" name="client_name" id="id_client_name" class="app-input" value="{{ client.name }}">
 </div>
-<div class="grid grid-cols-2 gap-3">
     <div class="space-y-1">
         <label for="id_client_document" class="app-field-label">CPF / CNPJ</label>
         <input type="text" name="client_document" id="id_client_document" class="app-input" value="{{ client.document }}">
@@ -11,7 +10,10 @@
         <label for="id_client_email" class="app-field-label">E-mail do tomador</label>
         <input type="email" name="client_email" id="id_client_email" class="app-input" value="{{ client.email }}">
     </div>
-</div>
+    <div class="space-y-1">
+        <label for="id_client_phone" class="app-field-label">Telefone</label>
+        <input type="text" name="client_phone" id="id_client_phone" class="app-input" value="{{ client.phone }}">
+    </div>
 <div class="space-y-1">
     <label for="id_client_address" class="app-field-label">Endereço</label>
     <input type="text" name="client_address" id="id_client_address" class="app-input" value="{{ client.address }}">

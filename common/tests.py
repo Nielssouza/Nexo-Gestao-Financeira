@@ -295,3 +295,55 @@ class BalanceFunctionsTests(TestCase):
         )
 
         self.assertEqual(available, Decimal("750.00"))
+
+    def test_credit_card_available_limit_uses_card_credit_limit_when_present(self):
+        card = Account.objects.create(
+            user=self.user,
+            tenant=self.tenant,
+            name="Cartao com limite",
+            account_type=Account.AccountType.CARD,
+            initial_balance=Decimal("0.00"),
+            credit_limit=Decimal("500.00"),
+            include_in_balance=False,
+        )
+        self.create_transaction(
+            account=card,
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            amount=Decimal("125.00"),
+        )
+        self.create_transaction(
+            account=card,
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            amount=Decimal("50.00"),
+            is_cleared=False,
+        )
+
+        available = calculate_credit_card_available_limit(
+            self.tenant,
+            date(2026, 6, 1),
+        )
+
+        self.assertEqual(available, Decimal("375.00"))
+
+    def test_user_balance_includes_cleared_card_account_balance(self):
+        card = Account.objects.create(
+            user=self.user,
+            tenant=self.tenant,
+            name="Cartao saldo",
+            account_type=Account.AccountType.CARD,
+            initial_balance=Decimal("0.00"),
+            include_in_balance=False,
+        )
+        self.create_transaction(
+            account=card,
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            amount=Decimal("81.68"),
+        )
+
+        total = calculate_user_balance(
+            self.user,
+            date(2026, 6, 30),
+            tenant=self.tenant,
+        )
+
+        self.assertEqual(total, Decimal("1118.32"))

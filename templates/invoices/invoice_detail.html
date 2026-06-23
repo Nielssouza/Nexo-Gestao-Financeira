@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}NFS-e {{ invoice.number_display }} | Nexo{% endblock %}
+{% block title %}Fatura {{ invoice.number_display }} | Nexo{% endblock %}
 {% block page_header %}{% endblock %}
 {% block main_class %}px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-36{% endblock %}
 
@@ -10,15 +10,17 @@
     {# Cabeçalho #}
     <div class="flex items-start justify-between gap-3">
         <div>
-            <h1 class="app-title">NFS-e {{ invoice.number_display }}</h1>
+            <h1 class="app-title">Fatura {{ invoice.number_display }}</h1>
         </div>
-        {% if invoice.status == 'issued' %}
-            <span class="badge badge-expense">Emitida</span>
-        {% elif invoice.status == 'paid' %}
-            <span class="badge badge-income">Paga</span>
-        {% else %}
-            <span class="badge" style="background:rgba(100,116,139,0.25);color:#94a3b8;">Cancelada</span>
-        {% endif %}
+        <div class="flex items-center gap-3">
+            {% if invoice.status == 'issued' %}
+                <span class="badge badge-expense">Emitida</span>
+            {% elif invoice.status == 'paid' %}
+                <span class="badge badge-income">Paga</span>
+            {% else %}
+                <span class="badge" style="background:rgba(100,116,139,0.25);color:#94a3b8;">Cancelada</span>
+            {% endif %}
+        </div>
     </div>
 
     {# Datas #}
@@ -43,6 +45,16 @@
         </div>
     </div>
 
+    {# Prestador #}
+    <div class="card space-y-2">
+        <p class="app-field-label" style="font-size:0.68rem;letter-spacing:.06em;text-transform:uppercase;color:#7c8fa6;">Prestador do serviço</p>
+        <p class="app-item-title">{{ invoice.tenant.name }}</p>
+        {% if invoice.tenant.document %}<p class="app-item-meta">{{ invoice.tenant.document }}</p>{% endif %}
+        {% if invoice.tenant.email %}<p class="app-item-meta">{{ invoice.tenant.email }}</p>{% endif %}
+        {% if invoice.tenant.phone %}<p class="app-item-meta">{{ invoice.tenant.phone }}</p>{% endif %}
+        {% if invoice.tenant.address %}<p class="app-item-meta">{{ invoice.tenant.address }}{% if invoice.tenant.city %} — {{ invoice.tenant.city }}{% endif %}</p>{% endif %}
+    </div>
+
     {# Tomador #}
     <div class="card space-y-2">
         <p class="app-field-label" style="font-size:0.68rem;letter-spacing:.06em;text-transform:uppercase;color:#7c8fa6;">Tomador do serviço</p>
@@ -55,7 +67,7 @@
     {# Discriminação #}
     <div class="card space-y-2">
         <p class="app-field-label" style="font-size:0.68rem;letter-spacing:.06em;text-transform:uppercase;color:#7c8fa6;">Discriminação dos serviços</p>
-        {% if invoice.service_code %}<p class="app-item-meta">Código: {{ invoice.service_code }}</p>{% endif %}
+        {% if invoice.service_code %}<p class="app-item-meta">Código: {{ invoice.service_code }}{% if service_code_description %} — {{ service_code_description }}{% endif %}</p>{% endif %}
         <p class="text-slate-200 text-sm leading-relaxed whitespace-pre-line">{{ invoice.service_description }}</p>
     </div>
 
@@ -64,7 +76,7 @@
         <p class="app-field-label" style="font-size:0.68rem;letter-spacing:.06em;text-transform:uppercase;color:#7c8fa6;">Valores</p>
         <div class="space-y-2">
             <div class="flex justify-between text-sm">
-                <span class="text-slate-400">Valor bruto</span>
+                <span class="text-slate-400">Valor do serviço</span>
                 <span class="text-slate-200 font-medium">R$ {{ invoice.gross_value }}</span>
             </div>
             {% if invoice.deductions %}
@@ -79,48 +91,8 @@
             {% endif %}
         </div>
 
-        <div class="space-y-1 border-t border-slate-700 pt-3">
-            <p class="app-field-label" style="font-size:0.68rem;letter-spacing:.06em;text-transform:uppercase;color:#7c8fa6;">Impostos retidos</p>
-            {% if invoice.iss_rate %}
-            <div class="flex justify-between text-sm">
-                <span class="text-slate-400">ISS ({{ invoice.iss_rate }}%){% if invoice.iss_withheld %} retido{% endif %}</span>
-                <span class="text-slate-200">R$ {{ invoice.iss_value }}</span>
-            </div>
-            {% endif %}
-            {% if invoice.pis_rate %}
-            <div class="flex justify-between text-sm">
-                <span class="text-slate-400">PIS ({{ invoice.pis_rate }}%)</span>
-                <span class="text-slate-200">R$ {{ invoice.pis_value }}</span>
-            </div>
-            {% endif %}
-            {% if invoice.cofins_rate %}
-            <div class="flex justify-between text-sm">
-                <span class="text-slate-400">COFINS ({{ invoice.cofins_rate }}%)</span>
-                <span class="text-slate-200">R$ {{ invoice.cofins_value }}</span>
-            </div>
-            {% endif %}
-            {% if invoice.csll_rate %}
-            <div class="flex justify-between text-sm">
-                <span class="text-slate-400">CSLL ({{ invoice.csll_rate }}%)</span>
-                <span class="text-slate-200">R$ {{ invoice.csll_value }}</span>
-            </div>
-            {% endif %}
-            {% if invoice.ir_rate %}
-            <div class="flex justify-between text-sm">
-                <span class="text-slate-400">IR ({{ invoice.ir_rate }}%)</span>
-                <span class="text-slate-200">R$ {{ invoice.ir_value }}</span>
-            </div>
-            {% endif %}
-            {% if invoice.inss_rate %}
-            <div class="flex justify-between text-sm">
-                <span class="text-slate-400">INSS ({{ invoice.inss_rate }}%)</span>
-                <span class="text-slate-200">R$ {{ invoice.inss_value }}</span>
-            </div>
-            {% endif %}
-        </div>
-
         <div class="flex justify-between border-t border-slate-600 pt-3">
-            <span class="font-semibold text-slate-200">Valor líquido</span>
+            <span class="font-semibold text-slate-200">Valor da fatura</span>
             <span class="font-bold text-lg text-emerald-400">R$ {{ invoice.net_value }}</span>
         </div>
     </div>
@@ -151,10 +123,9 @@
                     <button type="submit" class="app-btn-primary w-full">Marcar como paga</button>
                 </form>
             </div>
-            <form method="post" action="{% url 'invoices:cancel' invoice.pk %}">
+            <form id="form-cancel-invoice" method="post" action="{% url 'invoices:cancel' invoice.pk %}">
                 {% csrf_token %}
-                <button type="submit" class="app-btn-danger w-full"
-                    onclick="return confirm('Cancelar esta nota?')">Cancelar nota</button>
+                <button type="submit" class="app-btn-danger w-full">Cancelar nota</button>
             </form>
         {% endif %}
 
@@ -165,8 +136,74 @@
             </div>
         {% endif %}
 
+        <a href="{% url 'invoices:print' invoice.pk %}" target="_blank" class="app-btn-secondary flex items-center justify-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+            Imprimir fatura
+        </a>
         <a href="{% url 'invoices:list' %}" class="app-btn-secondary block text-center">Voltar para faturas</a>
+
+        <div class="pt-4 flex justify-center">
+            <a href="{% url 'invoices:delete' invoice.pk %}" class="text-sm font-medium text-red-500/80 hover:text-red-400 transition-colors">Excluir fatura permanentemente</a>
+        </div>
     </div>
 
 </section>
+
+{% block floating_action %}
+<!-- Modal Cancelar Nota -->
+<div id="invoice-cancel-modal" class="fixed inset-0 z-[9999] hidden items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+    <div class="bg-[#161616] border border-white/10 rounded-2xl max-w-sm w-full p-6 shadow-2xl transform scale-95 opacity-0 transition-all duration-200 m-auto" id="invoice-cancel-modal-panel">
+        <h3 class="text-white font-semibold text-lg mb-2">Cancelar esta nota?</h3>
+        <p class="text-slate-400 text-sm mb-6">
+            Tem certeza que deseja cancelar esta nota fiscal? Essa ação não poderá ser desfeita.
+        </p>
+        <div class="flex flex-col-reverse sm:flex-row gap-3 justify-end">
+            <button type="button" id="invoice-cancel-modal-cancel" class="app-btn-secondary py-2.5 px-4 text-sm w-full sm:w-auto">Não, voltar</button>
+            <button type="button" id="invoice-cancel-modal-confirm" class="app-btn-danger py-2.5 px-4 text-sm w-full sm:w-auto">Sim, cancelar</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const cancelForm = document.getElementById('form-cancel-invoice');
+        if (!cancelForm) return;
+
+        const modal = document.getElementById('invoice-cancel-modal');
+        const panel = document.getElementById('invoice-cancel-modal-panel');
+        const btnCancel = document.getElementById('invoice-cancel-modal-cancel');
+        const btnConfirm = document.getElementById('invoice-cancel-modal-confirm');
+
+        function openModal() {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            requestAnimationFrame(() => {
+                panel.classList.remove('scale-95', 'opacity-0');
+                panel.classList.add('scale-100', 'opacity-100');
+            });
+        }
+
+        function closeModal() {
+            panel.classList.remove('scale-100', 'opacity-100');
+            panel.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }, 200);
+        }
+
+        cancelForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            openModal();
+        });
+
+        btnCancel.addEventListener('click', closeModal);
+        
+        btnConfirm.addEventListener('click', function() {
+            cancelForm.submit();
+        });
+    });
+</script>
+
 {% endblock %}

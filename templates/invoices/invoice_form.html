@@ -6,12 +6,18 @@
 
 {% block content %}
 <section class="app-page space-y-4">
-    <div>
-        <h1 class="app-title">{% if object %}Editar fatura{% else %}Nova fatura{% endif %}</h1>
+    <div class="flex items-center gap-3">
+        <a href="javascript:history.back()" class="text-slate-400 hover:text-slate-200">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        </a>
+        <div>
+            <h1 class="app-title mb-0">{% if object %}Editar fatura{% else %}Nova fatura{% endif %}</h1>
+        </div>
     </div>
 
-    <form method="post" class="space-y-4">
+    <form method="post" class="space-y-4" id="invoice-form">
         {% csrf_token %}
+        <input type="hidden" name="save_client" id="id_save_client" value="0">
 
         {% if form.non_field_errors %}
             <div class="app-form-error">
@@ -77,12 +83,16 @@
                             Digite um CNPJ para autocompletar
                         </p>
                         {% for e in form.client_document.errors %}<p class="app-field-error">{{ e }}</p>{% endfor %}
-                    </div>
-                    <div class="space-y-1">
-                        <label for="{{ form.client_email.id_for_label }}" class="app-field-label">{{ form.client_email.label }}</label>
-                        {{ form.client_email }}
-                        {% for e in form.client_email.errors %}<p class="app-field-error">{{ e }}</p>{% endfor %}
-                    </div>
+                </div>
+                <div class="space-y-1">
+                    <label for="{{ form.client_email.id_for_label }}" class="app-field-label">{{ form.client_email.label }}</label>
+                    {{ form.client_email }}
+                    {% for e in form.client_email.errors %}<p class="app-field-error">{{ e }}</p>{% endfor %}
+                </div>
+                <div class="space-y-1">
+                    <label for="{{ form.client_phone.id_for_label }}" class="app-field-label">{{ form.client_phone.label }}</label>
+                    {{ form.client_phone }}
+                    {% for e in form.client_phone.errors %}<p class="app-field-error">{{ e }}</p>{% endfor %}
                 </div>
                 <div class="space-y-1">
                     <label for="{{ form.client_address.id_for_label }}" class="app-field-label">{{ form.client_address.label }}</label>
@@ -129,10 +139,18 @@
         {# Valor #}
         <div class="card space-y-4">
             <p class="app-field-label" style="font-size:0.7rem;letter-spacing:.06em;text-transform:uppercase;color:#7c8fa6;">Valor</p>
-            <div class="space-y-1">
-                <label for="{{ form.gross_value.id_for_label }}" class="app-field-label">{{ form.gross_value.label }}</label>
-                {{ form.gross_value }}
-                {% for e in form.gross_value.errors %}<p class="app-field-error">{{ e }}</p>{% endfor %}
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="space-y-1">
+                    <label for="{{ form.gross_value.id_for_label }}" class="app-field-label">{{ form.gross_value.label }}</label>
+                    {{ form.gross_value }}
+                    {% for e in form.gross_value.errors %}<p class="app-field-error">{{ e }}</p>{% endfor %}
+                </div>
+                <div class="space-y-1">
+                    <label for="{{ form.expected_account.id_for_label }}" class="app-field-label">{{ form.expected_account.label }} <span class="text-[0.6rem] text-slate-500 font-normal lowercase">(opcional)</span></label>
+                    {{ form.expected_account }}
+                    <p class="text-xs text-slate-500">{{ form.expected_account.help_text }}</p>
+                    {% for e in form.expected_account.errors %}<p class="app-field-error">{{ e }}</p>{% endfor %}
+                </div>
             </div>
         </div>
 
@@ -150,7 +168,60 @@
         </div>
     </form>
 </section>
+
+{% block floating_action %}
+<!-- Modal Salvar Cliente -->
+<div id="client-save-modal" class="fixed inset-0 z-[9999] hidden items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+    <div class="bg-[#161616] border border-white/10 rounded-2xl max-w-sm w-full p-6 shadow-2xl transform scale-95 opacity-0 transition-all duration-200 m-auto" id="client-save-modal-panel">
+        <h3 class="text-white font-semibold text-lg mb-2">Salvar novo cliente?</h3>
+        <p class="text-slate-400 text-sm mb-6" id="client-save-modal-text">
+            Este tomador não está na sua lista de clientes. Deseja salvá-lo automaticamente ao emitir a fatura?
+        </p>
+        <div class="flex flex-col-reverse sm:flex-row gap-3 justify-end">
+            <button type="button" id="client-save-modal-cancel" class="app-btn-secondary py-2.5 px-4 text-sm w-full sm:w-auto">Não, apenas emitir</button>
+            <button type="button" id="client-save-modal-confirm" class="app-btn-primary py-2.5 px-4 text-sm w-full sm:w-auto">Sim, salvar</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
 <script>
+    function showClientSaveModal(message) {
+        return new Promise((resolve) => {
+            const modal = document.getElementById('client-save-modal');
+            const panel = document.getElementById('client-save-modal-panel');
+            const textEl = document.getElementById('client-save-modal-text');
+            const btnCancel = document.getElementById('client-save-modal-cancel');
+            const btnConfirm = document.getElementById('client-save-modal-confirm');
+            
+            if (message) textEl.textContent = message;
+            
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            requestAnimationFrame(() => {
+                panel.classList.remove('scale-95', 'opacity-0');
+                panel.classList.add('scale-100', 'opacity-100');
+            });
+            
+            const cleanup = () => {
+                panel.classList.remove('scale-100', 'opacity-100');
+                panel.classList.add('scale-95', 'opacity-0');
+                setTimeout(() => {
+                    modal.classList.remove('flex');
+                    modal.classList.add('hidden');
+                }, 200);
+                btnCancel.removeEventListener('click', onCancel);
+                btnConfirm.removeEventListener('click', onConfirm);
+            };
+            
+            const onCancel = () => { cleanup(); resolve(false); };
+            const onConfirm = () => { cleanup(); resolve(true); };
+            
+            btnCancel.addEventListener('click', onCancel);
+            btnConfirm.addEventListener('click', onConfirm);
+        });
+    }
+
     window._emptyClientFields = document.getElementById('tomador-fields').innerHTML;
 
     document.addEventListener('click', function(e) {
@@ -160,9 +231,39 @@
     });
 
     document.addEventListener('input', function(e) {
+        if (e.target && e.target.id === 'id_gross_value') {
+            let value = e.target.value.replace(/\D/g, '');
+            if (!value) {
+                e.target.value = '';
+                return;
+            }
+            value = (parseInt(value, 10) / 100).toFixed(2) + '';
+            value = value.replace(".", ",");
+            value = value.replace(/(\d)(?=(\d{3})+(?!\d))/g, "$1.");
+            e.target.value = value;
+        }
+    });
+
+    document.addEventListener('input', function(e) {
         const field = e.target.closest('#id_client_document');
         if (!field) return;
-        const digits = field.value.replace(/\D/g, '');
+        
+        let v = field.value.replace(/\D/g, "");
+        if (v.length > 14) v = v.substring(0, 14);
+        let formatted = v;
+        if (v.length <= 11) {
+            formatted = v.replace(/(\d{3})(\d)/, "$1.$2")
+                         .replace(/(\d{3})(\d)/, "$1.$2")
+                         .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+        } else {
+            formatted = v.replace(/^(\d{2})(\d)/, "$1.$2")
+                         .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+                         .replace(/\.(\d{3})(\d)/, ".$1/$2")
+                         .replace(/(\d{4})(\d)/, "$1-$2");
+        }
+        field.value = formatted;
+
+        const digits = v;
         if (digits.length !== 14) return;
 
         field.disabled = true;
@@ -175,12 +276,46 @@
                 const set = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
                 set('id_client_name',    data.name);
                 set('id_client_email',   data.email);
+                set('id_client_phone',   data.phone);
                 set('id_client_address', data.address);
                 set('id_client_city',    data.city);
+
+                fetch(`/faturas/clientes/verificar/?doc=${digits}`)
+                    .then(r => r.json())
+                    .then(async checkData => {
+                        if (!checkData.exists && document.getElementById('id_save_client').value === '0') {
+                            setTimeout(async () => {
+                                const wantsToSave = await showClientSaveModal('Este CNPJ não está na sua lista de clientes. Deseja salvá-lo automaticamente ao emitir a fatura?');
+                                if (wantsToSave) {
+                                    document.getElementById('id_save_client').value = '1';
+                                }
+                            }, 100);
+                        }
+                    });
             })
             .catch(() => {})
             .finally(() => { field.disabled = false; field.style.opacity = '1'; });
     });
+
+    document.addEventListener('blur', function(e) {
+        if (e.target && e.target.id === 'id_client_name') {
+            const name = e.target.value.trim();
+            const docInput = document.getElementById('id_client_document');
+            const doc = docInput ? docInput.value.replace(/\D/g, '') : '';
+            if (name.length > 0 && doc.length === 0) {
+                fetch(`/faturas/clientes/verificar/?name=${encodeURIComponent(name)}`)
+                    .then(r => r.json())
+                    .then(async data => {
+                        if (!data.exists && document.getElementById('id_save_client').value === '0') {
+                            const wantsToSave = await showClientSaveModal('Este tomador (Nome) não está na sua lista de clientes. Deseja salvá-lo automaticamente ao emitir a fatura?');
+                            if (wantsToSave) {
+                                document.getElementById('id_save_client').value = '1';
+                            }
+                        }
+                    });
+            }
+        }
+    }, true);
 
     // Custom Service Code Autocomplete
     const serviceInput = document.getElementById('id_service_code');
@@ -236,5 +371,7 @@
             });
         });
     }
+
+    const invoiceForm = document.getElementById('invoice-form');
 </script>
 {% endblock %}

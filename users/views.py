@@ -5,7 +5,9 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.views import LoginView, LogoutView
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
+from django.utils.decorators import method_decorator
 from django.views.generic import CreateView, ListView, View
+from django_ratelimit.decorators import ratelimit
 from uuid import uuid4
 
 from users.forms import RegisterForm, StyledAuthenticationForm
@@ -40,10 +42,17 @@ class RegisterView(CreateView):
         return redirect(self.get_success_url())
 
 
+@method_decorator(ratelimit(key="ip", rate="10/m", method="POST", block=False), name="dispatch")
 class UserLoginView(LoginView):
     template_name = "users/login.html"
     authentication_form = StyledAuthenticationForm
     redirect_authenticated_user = True
+
+    def dispatch(self, request, *args, **kwargs):
+        if getattr(request, "limited", False):
+            messages.error(request, "Muitas tentativas de login. Aguarde 1 minuto e tente novamente.")
+            return self.render_to_response(self.get_context_data(form=self.get_form()))
+        return super().dispatch(request, *args, **kwargs)
 
     def form_valid(self, form):
         self.request.session["show_post_login_loader"] = True
