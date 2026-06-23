@@ -208,9 +208,24 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+_BUCKETEER_BUCKET = os.getenv("BUCKETEER_BUCKET_NAME")
+if _BUCKETEER_BUCKET:
+    AWS_ACCESS_KEY_ID = os.getenv("BUCKETEER_AWS_ACCESS_KEY_ID")
+    AWS_SECRET_ACCESS_KEY = os.getenv("BUCKETEER_AWS_SECRET_ACCESS_KEY")
+    AWS_STORAGE_BUCKET_NAME = _BUCKETEER_BUCKET
+    AWS_S3_REGION_NAME = os.getenv("BUCKETEER_AWS_REGION", "us-east-1")
+    AWS_S3_ENDPOINT_URL = f"https://s3.{AWS_S3_REGION_NAME}.amazonaws.com"
+    AWS_DEFAULT_ACL = "public-read"
+    AWS_S3_FILE_OVERWRITE = False
+    AWS_QUERYSTRING_AUTH = False
+    MEDIA_URL = f"https://{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com/media/"
+    _DEFAULT_FILE_BACKEND = "storages.backends.s3boto3.S3Boto3Storage"
+else:
+    _DEFAULT_FILE_BACKEND = "django.core.files.storage.FileSystemStorage"
+
 STORAGES = {
     "default": {
-        "BACKEND": "django.core.files.storage.FileSystemStorage",
+        "BACKEND": _DEFAULT_FILE_BACKEND,
     },
     "staticfiles": {
         "BACKEND": (
@@ -281,6 +296,16 @@ if LOCAL_DEVELOPMENT:
     CSRF_COOKIE_SECURE = False
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Celery
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+CELERY_BROKER_URL = REDIS_URL
+CELERY_RESULT_BACKEND = REDIS_URL
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_TASK_TRACK_STARTED = True
 
 # Cache — usa Redis se disponível (necessário para rate limiting em múltiplos dynos),
 # caso contrário cai para memória local (funciona em single-process).

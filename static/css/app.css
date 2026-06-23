@@ -593,6 +593,35 @@ body {
     box-shadow: 0 18px 28px -24px rgba(2, 8, 22, 0.95);
 }
 
+.invoice-summary-value {
+    margin: 0.5rem 0 0;
+    color: #f1f5f9;
+    display: flex;
+    align-items: baseline;
+    gap: 0.28rem;
+    min-height: 1.35rem;
+    line-height: 1;
+    letter-spacing: 0;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1, "lnum" 1;
+}
+
+.invoice-summary-currency {
+    color: #93c5fd;
+    font-size: 0.82rem;
+    line-height: 1;
+    font-weight: 700;
+}
+
+.invoice-summary-number {
+    color: #f1f5f9;
+    font-size: 1.18rem;
+    line-height: 1;
+    font-weight: 700;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+}
+
 .badge {
     display: inline-flex;
     align-items: center;

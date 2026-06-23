@@ -17,6 +17,67 @@ from invoices.service_codes import SERVICE_CODES
 from transactions.models import Transaction
 
 
+def _invoice_transaction_amount(invoice):
+    return invoice.gross_value - invoice.deductions
+
+
+def _invoice_transaction_description(invoice):
+    return f"Fatura {invoice.number_display} - {invoice.client_name}"
+
+
+def _sync_invoice_transaction(invoice, *, user, tenant, launch_financial):
+    if launch_financial:
+        if invoice.transaction:
+            txn = invoice.transaction
+            txn.amount = _invoice_transaction_amount(invoice)
+            txn.date = invoice.due_date or invoice.issue_date
+            txn.account = invoice.expected_account
+            txn.description = _invoice_transaction_description(invoice)
+            txn.recurrence_type = invoice.recurrence_type
+            txn.recurrence_interval = invoice.recurrence_interval
+            txn.recurrence_interval_unit = invoice.recurrence_interval_unit
+            txn.installment_count = invoice.installment_count
+            txn.save(
+                update_fields=[
+                    "amount",
+                    "date",
+                    "account",
+                    "description",
+                    "recurrence_type",
+                    "recurrence_interval",
+                    "recurrence_interval_unit",
+                    "installment_count",
+                ]
+            )
+            txn.generate_future_occurrences()
+            return txn
+
+        txn = Transaction.objects.create(
+            user=user,
+            tenant=tenant,
+            transaction_type=Transaction.TransactionType.INCOME,
+            amount=_invoice_transaction_amount(invoice),
+            date=invoice.due_date or invoice.issue_date,
+            account=invoice.expected_account,
+            description=_invoice_transaction_description(invoice),
+            is_cleared=False,
+            recurrence_type=invoice.recurrence_type,
+            recurrence_interval=invoice.recurrence_interval,
+            recurrence_interval_unit=invoice.recurrence_interval_unit,
+            installment_count=invoice.installment_count,
+        )
+        invoice.transaction = txn
+        invoice.save(update_fields=["transaction"])
+        txn.generate_future_occurrences()
+        return txn
+
+    if invoice.transaction and not invoice.transaction.is_cleared:
+        invoice.transaction.delete()
+        invoice.transaction = None
+        invoice.save(update_fields=["transaction"])
+    return None
+
+
 class InvoiceListView(UserQuerySetMixin, ListView):
     model = Invoice
     template_name = "invoices/invoice_list.html"
@@ -83,7 +144,8 @@ class InvoiceCreateView(UserAssignMixin, CreateView):
     def form_valid(self, form):
         form.instance.number = Invoice.next_number(self.request.tenant)
         form.instance.status = Invoice.ISSUED
-        
+        launch_financial = form.cleaned_data["launch_financial"]
+
         save_client = self.request.POST.get("save_client") == "1"
         if save_client and form.instance.client_document:
             Client.objects.get_or_create(
@@ -95,27 +157,16 @@ class InvoiceCreateView(UserAssignMixin, CreateView):
                     "email": form.instance.client_email,
                     "address": form.instance.client_address,
                     "city": form.instance.client_city,
-                }
+                },
             )
-            
+
         response = super().form_valid(form)
-        
-        if form.instance.expected_account:
-            from transactions.models import Transaction
-            txn = Transaction.objects.create(
-                user=self.request.user,
-                tenant=self.request.tenant,
-                transaction_type=Transaction.TransactionType.INCOME,
-                amount=form.instance.gross_value - form.instance.deductions,
-                date=form.instance.due_date or form.instance.issue_date,
-                account=form.instance.expected_account,
-                description=f"Fatura {form.instance.number_display} — {form.instance.client_name}",
-                is_cleared=False,
-                recurrence_type=Transaction.RecurrenceType.ONCE,
-            )
-            form.instance.transaction = txn
-            form.instance.save(update_fields=["transaction"])
-            
+        _sync_invoice_transaction(
+            form.instance,
+            user=self.request.user,
+            tenant=self.request.tenant,
+            launch_financial=launch_financial,
+        )
         return response
 
     def get_context_data(self, **kwargs):
@@ -135,10 +186,8 @@ class InvoiceDetailView(UserQuerySetMixin, DetailView):
         ctx = super().get_context_data(**kwargs)
         if self.object.status == Invoice.ISSUED:
             ctx["pay_form"] = InvoicePayForm(tenant=self.request.tenant)
-        # Resolve service code description
         code = self.object.service_code
-        desc = dict(SERVICE_CODES).get(code, "")
-        ctx["service_code_description"] = desc
+        ctx["service_code_description"] = dict(SERVICE_CODES).get(code, "")
         return ctx
 
 
@@ -151,6 +200,60 @@ class InvoicePrintView(UserQuerySetMixin, DetailView):
         ctx = super().get_context_data(**kwargs)
         ctx["service_code_description"] = dict(SERVICE_CODES).get(self.object.service_code, "")
         return ctx
+
+
+class InvoiceNfseGuideView(UserQuerySetMixin, DetailView):
+    model = Invoice
+    template_name = "invoices/invoice_nfse_guide.html"
+    context_object_name = "invoice"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["service_code_description"] = dict(SERVICE_CODES).get(self.object.service_code, "")
+        return ctx
+
+
+class InvoiceNfseEmitView(UserQuerySetMixin, View):
+    def post(self, request, pk):
+        from django.utils import timezone as tz
+        from invoices.tasks import emit_nfse_task
+
+        invoice = get_object_or_404(Invoice, pk=pk, tenant=request.tenant)
+
+        if not hasattr(request.tenant, "nfse_credential"):
+            messages.error(request, "Configure suas credenciais gov.br antes de emitir.")
+            return redirect(reverse("tenants:nfse-credential"))
+
+        if invoice.nfse_status == Invoice.NFSE_PROCESSING:
+            messages.info(request, "A emissão já está em andamento.")
+            return redirect(reverse("invoices:nfse-status", args=[pk]))
+
+        invoice.nfse_status = Invoice.NFSE_PENDING
+        invoice.nfse_requested_at = tz.now()
+        invoice.nfse_error = ""
+        invoice.save(update_fields=["nfse_status", "nfse_requested_at", "nfse_error"])
+
+        emit_nfse_task.delay(invoice.pk)
+        return redirect(reverse("invoices:nfse-status", args=[pk]))
+
+
+class InvoiceNfseStatusView(UserQuerySetMixin, DetailView):
+    model = Invoice
+    template_name = "invoices/invoice_nfse_status.html"
+    context_object_name = "invoice"
+
+    def get(self, request, *args, **kwargs):
+        invoice = self.get_object()
+        if request.headers.get("HX-Request"):
+            from django.template.loader import render_to_string
+            html = render_to_string(
+                "invoices/partials/nfse_status_card.html",
+                {"invoice": invoice},
+                request=request,
+            )
+            from django.http import HttpResponse as HR
+            return HR(html)
+        return super().get(request, *args, **kwargs)
 
 
 class InvoiceUpdateView(UserQuerySetMixin, UserAssignMixin, UpdateView):
@@ -168,34 +271,13 @@ class InvoiceUpdateView(UserQuerySetMixin, UserAssignMixin, UpdateView):
 
     def form_valid(self, form):
         response = super().form_valid(form)
-        
-        if form.instance.expected_account:
-            from transactions.models import Transaction
-            if form.instance.transaction:
-                txn = form.instance.transaction
-                txn.amount = form.instance.gross_value - form.instance.deductions
-                txn.date = form.instance.due_date or form.instance.issue_date
-                txn.account = form.instance.expected_account
-                txn.description = f"Fatura {form.instance.number_display} — {form.instance.client_name}"
-                txn.save(update_fields=["amount", "date", "account", "description"])
-            else:
-                txn = Transaction.objects.create(
-                    user=self.request.user,
-                    tenant=self.request.tenant,
-                    transaction_type=Transaction.TransactionType.INCOME,
-                    amount=form.instance.gross_value - form.instance.deductions,
-                    date=form.instance.due_date or form.instance.issue_date,
-                    account=form.instance.expected_account,
-                    description=f"Fatura {form.instance.number_display} — {form.instance.client_name}",
-                    is_cleared=False,
-                    recurrence_type=Transaction.RecurrenceType.ONCE,
-                )
-                form.instance.transaction = txn
-                form.instance.save(update_fields=["transaction"])
-        else:
-            if form.instance.transaction and not form.instance.transaction.is_cleared:
-                form.instance.transaction.delete()
-                
+        launch_financial = form.cleaned_data["launch_financial"]
+        _sync_invoice_transaction(
+            form.instance,
+            user=self.request.user,
+            tenant=self.request.tenant,
+            launch_financial=launch_financial,
+        )
         return response
 
     def get_context_data(self, **kwargs):
@@ -223,40 +305,58 @@ class InvoiceDeleteView(UserQuerySetMixin, DeleteView):
 
 class InvoicePayView(UserQuerySetMixin, View):
     def post(self, request, pk):
-        invoice = get_object_or_404(
-            self.get_queryset(), pk=pk, status=Invoice.ISSUED
-        )
+        invoice = get_object_or_404(self.get_queryset(), pk=pk, status=Invoice.ISSUED)
         form = InvoicePayForm(request.POST, tenant=request.tenant)
         if not form.is_valid():
-            messages.error(request, "Preencha a conta e a data de recebimento.")
+            messages.error(request, "Revise os dados do recebimento.")
             return redirect("invoices:detail", pk=pk)
 
-        if invoice.transaction:
-            txn = invoice.transaction
-            txn.is_cleared = True
-            txn.date = form.cleaned_data["paid_at"]
-            txn.account = form.cleaned_data["account"]
-            txn.save(update_fields=["is_cleared", "date", "account", "updated_at"])
+        if form.cleaned_data["launch_financial"]:
+            if invoice.transaction:
+                txn = invoice.transaction
+                txn.is_cleared = True
+                txn.date = form.cleaned_data["paid_at"]
+                txn.account = form.cleaned_data["account"]
+                txn.description = _invoice_transaction_description(invoice)
+                txn.save(
+                    update_fields=[
+                        "is_cleared",
+                        "date",
+                        "account",
+                        "description",
+                        "updated_at",
+                    ]
+                )
+            else:
+                txn = Transaction.objects.create(
+                    user=request.user,
+                    tenant=request.tenant,
+                    transaction_type=Transaction.TransactionType.INCOME,
+                    amount=invoice.net_value,
+                    date=form.cleaned_data["paid_at"],
+                    account=form.cleaned_data["account"],
+                    description=_invoice_transaction_description(invoice),
+                    is_cleared=True,
+                    recurrence_type=Transaction.RecurrenceType.ONCE,
+                )
         else:
-            txn = Transaction.objects.create(
-                user=request.user,
-                tenant=request.tenant,
-                transaction_type=Transaction.INCOME,
-                amount=invoice.net_value,
-                date=form.cleaned_data["paid_at"],
-                account=form.cleaned_data["account"],
-                description=f"Fatura {invoice.number_display} — {invoice.client_name}",
-                is_cleared=True,
-                recurrence_type=Transaction.ONCE,
-            )
+            if invoice.transaction and not invoice.transaction.is_cleared:
+                invoice.transaction.delete()
+            txn = None
         invoice.status = Invoice.PAID
         invoice.paid_at = form.cleaned_data["paid_at"]
         invoice.transaction = txn
         invoice.save(update_fields=["status", "paid_at", "transaction", "updated_at"])
-        messages.success(
-            request,
-            f"Nota {invoice.number_display} marcada como paga. Receita lançada.",
-        )
+        if txn:
+            messages.success(
+                request,
+                f"Nota {invoice.number_display} marcada como paga. Receita lancada.",
+            )
+        else:
+            messages.success(
+                request,
+                f"Nota {invoice.number_display} marcada como paga sem lancamento financeiro.",
+            )
         return redirect("invoices:detail", pk=pk)
 
     def get_queryset(self):
@@ -267,7 +367,7 @@ class InvoiceCancelView(UserQuerySetMixin, View):
     def post(self, request, pk):
         invoice = get_object_or_404(self.get_queryset(), pk=pk)
         if invoice.status == Invoice.PAID:
-            messages.error(request, "Nota paga não pode ser cancelada.")
+            messages.error(request, "Nota paga nao pode ser cancelada.")
             return redirect("invoices:detail", pk=pk)
         invoice.status = Invoice.CANCELLED
         if invoice.transaction and not invoice.transaction.is_cleared:
@@ -284,25 +384,29 @@ class ClientCheckView(View):
     def get(self, request):
         if not request.user.is_authenticated:
             from django.http import JsonResponse
+
             return JsonResponse({"exists": False})
-        
+
         doc = request.GET.get("doc", "").strip()
         name = request.GET.get("name", "").strip()
-        
+
         if not doc and not name:
             from django.http import JsonResponse
+
             return JsonResponse({"exists": True})
-            
+
         qs = Client.objects.filter(user=request.user, tenant=request.tenant)
-        
+
         if doc:
             import re
+
             digits = re.sub(r"\D", "", doc)
             exists = qs.filter(document__icontains=digits).exists()
         else:
             exists = qs.filter(name__iexact=name).exists()
-        
+
         from django.http import JsonResponse
+
         return JsonResponse({"exists": exists})
 
 
@@ -316,6 +420,7 @@ class ClientSearchView(View):
             clients = clients.filter(name__icontains=q)
         clients = clients[:10]
         from django.template.loader import render_to_string
+
         html = render_to_string(
             "invoices/partials/client_search_results.html",
             {"clients": clients, "q": q},
@@ -328,6 +433,7 @@ class ClientPrefillView(View):
     def get(self, request, pk):
         client = get_object_or_404(Client, pk=pk, user=request.user, tenant=request.tenant)
         from django.template.loader import render_to_string
+
         html = render_to_string(
             "invoices/partials/client_fields.html",
             {"client": client},
@@ -375,12 +481,13 @@ class ClientListView(UserQuerySetMixin, ListView):
 class CnpjLookupView(LoginRequiredMixin, View):
     def get(self, request, cnpj):
         import re
+
         import requests as req
         from django.http import JsonResponse
 
         digits = re.sub(r"\D", "", cnpj)
         if len(digits) != 14:
-            return JsonResponse({"error": "CNPJ inválido."}, status=400)
+            return JsonResponse({"error": "CNPJ invalido."}, status=400)
 
         try:
             resp = req.get(
@@ -391,20 +498,25 @@ class CnpjLookupView(LoginRequiredMixin, View):
             resp.raise_for_status()
             data = resp.json()
         except Exception:
-            return JsonResponse({"error": "Não foi possível consultar o CNPJ."}, status=502)
+            return JsonResponse({"error": "Nao foi possivel consultar o CNPJ."}, status=502)
 
-        address_parts = filter(None, [
-            data.get("logradouro"),
-            data.get("numero"),
-            data.get("complemento"),
-            data.get("bairro"),
-        ])
+        address_parts = filter(
+            None,
+            [
+                data.get("logradouro"),
+                data.get("numero"),
+                data.get("complemento"),
+                data.get("bairro"),
+            ],
+        )
         city_parts = filter(None, [data.get("municipio"), data.get("uf")])
 
-        return JsonResponse({
-            "name": data.get("razao_social") or data.get("nome_fantasia") or "",
-            "email": data.get("email") or "",
-            "phone": data.get("ddd_telefone_1") or data.get("telefone") or "",
-            "address": ", ".join(address_parts),
-            "city": " / ".join(city_parts),
-        })
+        return JsonResponse(
+            {
+                "name": data.get("razao_social") or data.get("nome_fantasia") or "",
+                "email": data.get("email") or "",
+                "phone": data.get("ddd_telefone_1") or data.get("telefone") or "",
+                "address": ", ".join(address_parts),
+                "city": " / ".join(city_parts),
+            }
+        )

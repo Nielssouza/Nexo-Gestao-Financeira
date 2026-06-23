@@ -7,7 +7,7 @@
             hx-get="{% url 'invoices:client-prefill' client.pk %}"
             hx-target="#tomador-fields"
             hx-swap="innerHTML"
-            hx-on::after-request="document.getElementById('client-search-results').innerHTML = ''; document.getElementById('id_client_search').value = '';">
+            hx-on::after-request="window.clearClientSearchSelection && window.clearClientSearchSelection()">
             <p class="text-sm font-semibold text-slate-100">{{ client.name }}</p>
             {% if client.document %}<p class="text-xs text-slate-400">{{ client.document }}</p>{% endif %}
         </button>

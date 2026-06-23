@@ -11,7 +11,7 @@
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
         </a>
         <div>
-            <h1 class="app-title mb-0">{% if object %}Editar fatura{% else %}Nova fatura{% endif %}</h1>
+            <h1 class="app-title mb-0">{% if object %}Editar fatura{% else %}Nova fatura (ATUALIZADO){% endif %}</h1>
         </div>
     </div>
 
@@ -139,17 +139,142 @@
         {# Valor #}
         <div class="card space-y-4">
             <p class="app-field-label" style="font-size:0.7rem;letter-spacing:.06em;text-transform:uppercase;color:#7c8fa6;">Valor</p>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="space-y-4">
                 <div class="space-y-1">
                     <label for="{{ form.gross_value.id_for_label }}" class="app-field-label">{{ form.gross_value.label }}</label>
                     {{ form.gross_value }}
                     {% for e in form.gross_value.errors %}<p class="app-field-error">{{ e }}</p>{% endfor %}
                 </div>
                 <div class="space-y-1">
+                    <label for="{{ form.launch_financial.id_for_label }}" class="app-field-label">{{ form.launch_financial.label }}</label>
+                    {{ form.launch_financial }}
+                    <p class="text-xs text-slate-500">Escolha se a receita deve ser criada automaticamente no financeiro ao emitir a fatura.</p>
+                    {% for e in form.launch_financial.errors %}<p class="app-field-error">{{ e }}</p>{% endfor %}
+                </div>
+                <div class="space-y-1" id="expected-account-wrapper">
                     <label for="{{ form.expected_account.id_for_label }}" class="app-field-label">{{ form.expected_account.label }} <span class="text-[0.6rem] text-slate-500 font-normal lowercase">(opcional)</span></label>
                     {{ form.expected_account }}
-                    <p class="text-xs text-slate-500">{{ form.expected_account.help_text }}</p>
+                    <p class="text-xs text-slate-500" id="expected-account-help">{{ form.expected_account.help_text }}</p>
                     {% for e in form.expected_account.errors %}<p class="app-field-error">{{ e }}</p>{% endfor %}
+                </div>
+            </div>
+        </div>
+
+        {# Impostos #}
+        <div class="card space-y-4">
+            <p class="app-field-label" style="font-size:0.7rem;letter-spacing:.06em;text-transform:uppercase;color:#7c8fa6;">Impostos retidos</p>
+
+            <div class="space-y-1">
+                <label for="{{ form.deductions.id_for_label }}" class="app-field-label">Deduções (R$)</label>
+                {{ form.deductions }}
+                {% for e in form.deductions.errors %}<p class="app-field-error">{{ e }}</p>{% endfor %}
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div class="space-y-1">
+                    <label for="{{ form.iss_rate.id_for_label }}" class="app-field-label">ISS (%)</label>
+                    {{ form.iss_rate }}
+                    {% for e in form.iss_rate.errors %}<p class="app-field-error">{{ e }}</p>{% endfor %}
+                </div>
+                <div class="flex items-end pb-1 gap-2">
+                    {{ form.iss_withheld }}
+                    <label for="{{ form.iss_withheld.id_for_label }}" class="app-field-label cursor-pointer">ISS retido na fonte</label>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div class="space-y-1">
+                    <label for="{{ form.pis_rate.id_for_label }}" class="app-field-label">PIS (%)</label>
+                    {{ form.pis_rate }}
+                    {% for e in form.pis_rate.errors %}<p class="app-field-error">{{ e }}</p>{% endfor %}
+                </div>
+                <div class="space-y-1">
+                    <label for="{{ form.cofins_rate.id_for_label }}" class="app-field-label">COFINS (%)</label>
+                    {{ form.cofins_rate }}
+                    {% for e in form.cofins_rate.errors %}<p class="app-field-error">{{ e }}</p>{% endfor %}
+                </div>
+                <div class="space-y-1">
+                    <label for="{{ form.csll_rate.id_for_label }}" class="app-field-label">CSLL (%)</label>
+                    {{ form.csll_rate }}
+                    {% for e in form.csll_rate.errors %}<p class="app-field-error">{{ e }}</p>{% endfor %}
+                </div>
+                <div class="space-y-1">
+                    <label for="{{ form.ir_rate.id_for_label }}" class="app-field-label">IR (%)</label>
+                    {{ form.ir_rate }}
+                    {% for e in form.ir_rate.errors %}<p class="app-field-error">{{ e }}</p>{% endfor %}
+                </div>
+                <div class="space-y-1">
+                    <label for="{{ form.inss_rate.id_for_label }}" class="app-field-label">INSS (%)</label>
+                    {{ form.inss_rate }}
+                    {% for e in form.inss_rate.errors %}<p class="app-field-error">{{ e }}</p>{% endfor %}
+                </div>
+            </div>
+
+            <div id="tax-preview" class="rounded-lg bg-slate-800/60 p-3 space-y-1 text-sm hidden">
+                <div class="flex justify-between text-slate-400">
+                    <span>Valor bruto</span>
+                    <span id="tp-gross">—</span>
+                </div>
+                <div class="flex justify-between text-slate-400" id="tp-ded-row">
+                    <span>Deduções</span>
+                    <span id="tp-ded">—</span>
+                </div>
+                <div class="flex justify-between text-slate-400 border-t border-slate-700 pt-1" id="tp-base-row">
+                    <span>Base de cálculo</span>
+                    <span id="tp-base">—</span>
+                </div>
+                <div class="flex justify-between text-red-400" id="tp-taxes-row">
+                    <span>Total retido</span>
+                    <span id="tp-taxes">—</span>
+                </div>
+                <div class="flex justify-between font-semibold text-emerald-400 border-t border-slate-700 pt-1">
+                    <span>Valor líquido</span>
+                    <span id="tp-net">—</span>
+                </div>
+            </div>
+        </div>
+
+        {# Recorrência #}
+        <div class="card space-y-4" id="recurrence-block">
+            <p class="app-field-label" style="font-size:0.7rem;letter-spacing:.06em;text-transform:uppercase;color:#7c8fa6;">Recorrência</p>
+            
+            <div class="space-y-4">
+                <div class="space-y-1">
+                    <label for="{{ form.recurrence_type.id_for_label }}" class="app-field-label">{{ form.recurrence_type.label }}</label>
+                    <div class="relative">
+                        {{ form.recurrence_type }}
+                        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-500">Define como o lançamento financeiro dessa fatura se repetirá no futuro.</p>
+                    {% for e in form.recurrence_type.errors %}<p class="app-field-error">{{ e }}</p>{% endfor %}
+                </div>
+
+                <div id="recurrence-details-container" class="space-y-4 pt-1" style="display: {% if form.recurrence_type.value == 'once' or not form.recurrence_type.value %}none{% else %}block{% endif %};">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="space-y-1">
+                            <label for="{{ form.recurrence_interval.id_for_label }}" class="app-field-label">{{ form.recurrence_interval.label }}</label>
+                            {{ form.recurrence_interval }}
+                            {% for e in form.recurrence_interval.errors %}<p class="app-field-error">{{ e }}</p>{% endfor %}
+                        </div>
+                        <div class="space-y-1">
+                            <label for="{{ form.recurrence_interval_unit.id_for_label }}" class="app-field-label">{{ form.recurrence_interval_unit.label }}</label>
+                            <div class="relative">
+                                {{ form.recurrence_interval_unit }}
+                                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                </div>
+                            </div>
+                            {% for e in form.recurrence_interval_unit.errors %}<p class="app-field-error">{{ e }}</p>{% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="space-y-1" id="installment-count-container" style="display: {% if form.recurrence_type.value == 'installment' %}block{% else %}none{% endif %};">
+                        <label for="{{ form.installment_count.id_for_label }}" class="app-field-label">{{ form.installment_count.label }}</label>
+                        {{ form.installment_count }}
+                        {% for e in form.installment_count.errors %}<p class="app-field-error">{{ e }}</p>{% endfor %}
+                    </div>
                 </div>
             </div>
         </div>
@@ -223,12 +348,52 @@
     }
 
     window._emptyClientFields = document.getElementById('tomador-fields').innerHTML;
+    window.clearClientSearchSelection = function () {
+        const results = document.getElementById('client-search-results');
+        const searchInput = document.getElementById('id_client_search');
+        if (results) {
+            results.innerHTML = '';
+        }
+        if (searchInput) {
+            searchInput.value = '';
+            searchInput.blur();
+        }
+    };
 
     document.addEventListener('click', function(e) {
         if (!e.target.closest('#client-search-results') && !e.target.closest('#id_client_search')) {
             document.getElementById('client-search-results').innerHTML = '';
         }
     });
+
+    document.body.addEventListener('htmx:afterSwap', function(e) {
+        if (e.target && e.target.id === 'tomador-fields' && window.clearClientSearchSelection) {
+            window.clearClientSearchSelection();
+        }
+    });
+
+    function syncInvoiceFinancialFields() {
+        const launchField = document.getElementById('id_launch_financial');
+        const expectedAccountField = document.getElementById('id_expected_account');
+        const wrapper = document.getElementById('expected-account-wrapper');
+        const help = document.getElementById('expected-account-help');
+        if (!launchField || !expectedAccountField || !wrapper || !help) return;
+
+        const shouldLaunch = launchField.value === '1';
+        expectedAccountField.disabled = !shouldLaunch;
+        wrapper.classList.toggle('opacity-60', !shouldLaunch);
+        help.textContent = shouldLaunch
+            ? 'Selecione a conta para criar a receita pendente automaticamente.'
+            : 'Quando desativado, a fatura sera emitida sem criar lancamento financeiro.';
+    }
+
+    document.addEventListener('change', function(e) {
+        if (e.target && e.target.id === 'id_launch_financial') {
+            syncInvoiceFinancialFields();
+        }
+    });
+
+    syncInvoiceFinancialFields();
 
     document.addEventListener('input', function(e) {
         if (e.target && e.target.id === 'id_gross_value') {
@@ -372,6 +537,66 @@
         });
     }
 
+    // Tax preview
+    function parseBRL(val) {
+        if (!val) return 0;
+        return parseFloat(val.replace(/\./g, '').replace(',', '.')) || 0;
+    }
+    function fmtBRL(n) {
+        return 'R$ ' + n.toFixed(2).replace('.', ',').replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
+    }
+    function updateTaxPreview() {
+        const gross = parseBRL(document.getElementById('id_gross_value')?.value);
+        const ded   = parseBRL(document.getElementById('id_deductions')?.value);
+        const rates = ['iss','pis','cofins','csll','ir','inss'].map(t => parseFloat(document.getElementById('id_' + t + '_rate')?.value?.replace(',','.')) || 0);
+        const base  = Math.max(gross - ded, 0);
+        const issWithheld = document.getElementById('id_iss_withheld')?.checked;
+        let withheld = rates.slice(1).reduce((s, r) => s + base * r / 100, 0);
+        if (issWithheld) withheld += base * rates[0] / 100;
+        const net = gross - withheld;
+        const preview = document.getElementById('tax-preview');
+        if (gross > 0) {
+            preview.classList.remove('hidden');
+            document.getElementById('tp-gross').textContent = fmtBRL(gross);
+            document.getElementById('tp-ded').textContent   = '− ' + fmtBRL(ded);
+            document.getElementById('tp-base').textContent  = fmtBRL(base);
+            document.getElementById('tp-taxes').textContent = '− ' + fmtBRL(withheld);
+            document.getElementById('tp-net').textContent   = fmtBRL(net);
+            document.getElementById('tp-ded-row').style.display  = ded > 0 ? 'flex' : 'none';
+            document.getElementById('tp-base-row').style.display = ded > 0 ? 'flex' : 'none';
+            document.getElementById('tp-taxes-row').style.display = withheld > 0 ? 'flex' : 'none';
+        } else {
+            preview.classList.add('hidden');
+        }
+    }
+    ['id_gross_value','id_deductions','id_iss_rate','id_pis_rate','id_cofins_rate','id_csll_rate','id_ir_rate','id_inss_rate','id_iss_withheld'].forEach(id => {
+        document.getElementById(id)?.addEventListener('input', updateTaxPreview);
+        document.getElementById(id)?.addEventListener('change', updateTaxPreview);
+    });
+    updateTaxPreview();
+
     const invoiceForm = document.getElementById('invoice-form');
+
+    window.toggleRecurrenceFields = function(value) {
+        const detailsContainer = document.getElementById('recurrence-details-container');
+        const installmentContainer = document.getElementById('installment-count-container');
+        
+        if (value === 'once' || !value) {
+            detailsContainer.style.display = 'none';
+        } else {
+            detailsContainer.style.display = 'block';
+            if (value === 'installment') {
+                installmentContainer.style.display = 'block';
+            } else {
+                installmentContainer.style.display = 'none';
+            }
+        }
+    };
+
+    // Run once on load
+    const recSelect = document.getElementById('id_recurrence_type');
+    if(recSelect) {
+        toggleRecurrenceFields(recSelect.value);
+    }
 </script>
 {% endblock %}

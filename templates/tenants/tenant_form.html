@@ -13,7 +13,7 @@
 
     <form method="post" enctype="multipart/form-data" class="space-y-4">
         {% csrf_token %}
-        
+
         <div class="card space-y-4">
             <p class="app-field-label" style="font-size:0.7rem;letter-spacing:.06em;text-transform:uppercase;color:#7c8fa6;">Logo da Empresa</p>
             <div class="flex items-center gap-4">
@@ -34,19 +34,19 @@
                     <button type="button" id="btn-remove-logo" class="text-xs text-red-400 hover:text-red-300 w-full text-center transition-colors">Remover logo</button>
                     <input type="hidden" name="logo-clear" id="logo-clear-input" value="">
                     {% endif %}
-                    <p class="text-xs text-slate-500">PNG, JPG ou WebP. Máx. 2 MB. Recomendado: fundo transparente.</p>
+                    <p class="text-xs text-slate-500">PNG, JPG ou WebP. Max. 2 MB. Recomendado: fundo transparente.</p>
                 </div>
             </div>
         </div>
 
         <div class="card space-y-4">
-            <p class="app-field-label" style="font-size:0.7rem;letter-spacing:.06em;text-transform:uppercase;color:#7c8fa6;">Informações Principais</p>
+            <p class="app-field-label" style="font-size:0.7rem;letter-spacing:.06em;text-transform:uppercase;color:#7c8fa6;">Informacoes Principais</p>
             <div class="space-y-1">
                 <label for="{{ form.name.id_for_label }}" class="app-field-label">{{ form.name.label }}</label>
                 {{ form.name }}
                 {% for e in form.name.errors %}<p class="app-field-error">{{ e }}</p>{% endfor %}
             </div>
-            
+
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div class="space-y-1">
                     <label for="{{ form.document.id_for_label }}" class="app-field-label">{{ form.document.label }}</label>
@@ -59,7 +59,7 @@
                     {% for e in form.phone.errors %}<p class="app-field-error">{{ e }}</p>{% endfor %}
                 </div>
             </div>
-            
+
             <div class="space-y-1">
                 <label for="{{ form.email.id_for_label }}" class="app-field-label">{{ form.email.label }}</label>
                 {{ form.email }}
@@ -68,25 +68,63 @@
         </div>
 
         <div class="card space-y-4">
-            <p class="app-field-label" style="font-size:0.7rem;letter-spacing:.06em;text-transform:uppercase;color:#7c8fa6;">Endereço Comercial</p>
+            <p class="app-field-label" style="font-size:0.7rem;letter-spacing:.06em;text-transform:uppercase;color:#7c8fa6;">Endereco Comercial</p>
+
             <div class="space-y-1">
-                <label for="{{ form.address.id_for_label }}" class="app-field-label">{{ form.address.label }}</label>
-                {{ form.address }}
-                {% for e in form.address.errors %}<p class="app-field-error">{{ e }}</p>{% endfor %}
+                <label for="{{ form.postal_code.id_for_label }}" class="app-field-label">{{ form.postal_code.label }}</label>
+                {{ form.postal_code }}
+                {% for e in form.postal_code.errors %}<p class="app-field-error">{{ e }}</p>{% endfor %}
             </div>
-            <div class="space-y-1">
-                <label for="{{ form.city.id_for_label }}" class="app-field-label">{{ form.city.label }}</label>
-                {{ form.city }}
-                {% for e in form.city.errors %}<p class="app-field-error">{{ e }}</p>{% endfor %}
+
+            <div class="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_8rem] gap-4">
+                <div class="space-y-1">
+                    <label for="{{ form.address.id_for_label }}" class="app-field-label">{{ form.address.label }}</label>
+                    {{ form.address }}
+                    {% for e in form.address.errors %}<p class="app-field-error">{{ e }}</p>{% endfor %}
+                </div>
+                <div class="space-y-1">
+                    <label for="{{ form.address_number.id_for_label }}" class="app-field-label">{{ form.address_number.label }}</label>
+                    {{ form.address_number }}
+                    {% for e in form.address_number.errors %}<p class="app-field-error">{{ e }}</p>{% endfor %}
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="space-y-1">
+                    <label for="{{ form.district.id_for_label }}" class="app-field-label">{{ form.district.label }}</label>
+                    {{ form.district }}
+                    {% for e in form.district.errors %}<p class="app-field-error">{{ e }}</p>{% endfor %}
+                </div>
+                <div class="space-y-1">
+                    <label for="{{ form.address_complement.id_for_label }}" class="app-field-label">{{ form.address_complement.label }}</label>
+                    {{ form.address_complement }}
+                    {% for e in form.address_complement.errors %}<p class="app-field-error">{{ e }}</p>{% endfor %}
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_6rem] gap-4">
+                <div class="space-y-1">
+                    <label for="{{ form.city.id_for_label }}" class="app-field-label">{{ form.city.label }}</label>
+                    {{ form.city }}
+                    {% for e in form.city.errors %}<p class="app-field-error">{{ e }}</p>{% endfor %}
+                </div>
+                <div class="space-y-1">
+                    <label for="{{ form.state.id_for_label }}" class="app-field-label">{{ form.state.label }}</label>
+                    {{ form.state }}
+                    {% for e in form.state.errors %}<p class="app-field-error">{{ e }}</p>{% endfor %}
+                </div>
             </div>
         </div>
 
         <div class="flex justify-end pt-2">
-            <button type="submit" class="app-btn-primary w-full sm:w-auto">Salvar Alterações</button>
+            <button type="submit" class="app-btn-primary w-full sm:w-auto">Salvar Alteracoes</button>
         </div>
     </form>
 </section>
 <script>
+    let cepLookupTimer = null;
+    let lastCepRequested = "";
+
     document.getElementById('id_logo').addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (!file) return;
@@ -113,7 +151,7 @@
     document.addEventListener('input', function(e) {
         const field = e.target.closest('#id_document');
         if (!field) return;
-        
+
         let v = field.value.replace(/\D/g, "");
         if (v.length > 14) v = v.substring(0, 14);
         let formatted = v;
@@ -130,11 +168,70 @@
         field.value = formatted;
     });
 
-    // Format on load if there's already a value
+    document.addEventListener('input', function(e) {
+        const field = e.target.closest('#id_postal_code');
+        if (!field) return;
+
+        let v = field.value.replace(/\D/g, "").substring(0, 8);
+        if (v.length > 5) {
+            v = v.replace(/^(\d{5})(\d)/, "$1-$2");
+        }
+        field.value = v;
+
+        const digits = v.replace(/\D/g, "");
+        if (digits.length !== 8 || digits === lastCepRequested) {
+            return;
+        }
+
+        clearTimeout(cepLookupTimer);
+        cepLookupTimer = setTimeout(async function() {
+            lastCepRequested = digits;
+
+            try {
+                const response = await fetch(`/empresa/cep/${digits}/`);
+                if (!response.ok) {
+                    return;
+                }
+
+                const data = await response.json();
+                const setValue = function(id, value, onlyIfEmpty) {
+                    const input = document.getElementById(id);
+                    if (!input || !value) return;
+                    if (onlyIfEmpty && input.value.trim()) return;
+                    input.value = value;
+                };
+
+                setValue('id_address', data.address, true);
+                setValue('id_district', data.district, true);
+                setValue('id_city', data.city, true);
+                setValue('id_state', data.state, true);
+                setValue('id_address_complement', data.complement, true);
+                setValue('id_postal_code', data.postal_code, false);
+            } catch (error) {
+            }
+        }, 350);
+    });
+
+    document.addEventListener('input', function(e) {
+        const field = e.target.closest('#id_state');
+        if (!field) return;
+        field.value = field.value.toUpperCase().replace(/[^A-Z]/g, "").substring(0, 2);
+    });
+
     document.addEventListener('DOMContentLoaded', function() {
         const docField = document.getElementById('id_document');
         if (docField && docField.value) {
             docField.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+
+        const postalField = document.getElementById('id_postal_code');
+        if (postalField && postalField.value) {
+            postalField.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+
+        const stateField = document.getElementById('id_state');
+        if (stateField && stateField.value) {
+            stateField.dispatchEvent(new Event('input', { bubbles: true }));
         }
     });
 </script>

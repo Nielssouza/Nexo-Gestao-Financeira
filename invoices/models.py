@@ -4,6 +4,8 @@ from django.conf import settings
 from django.db import models
 from django.db.models import Max
 
+from transactions.models import Transaction
+
 
 class Client(models.Model):
     user = models.ForeignKey(
@@ -110,6 +112,48 @@ class Invoice(models.Model):
     )
 
     notes = models.TextField("Observações", blank=True)
+
+    recurrence_type = models.CharField(
+        "Recorrência",
+        max_length=20,
+        choices=Transaction.RecurrenceType.choices,
+        default=Transaction.RecurrenceType.ONCE,
+    )
+    recurrence_interval = models.PositiveSmallIntegerField(
+        "Intervalo de recorrência",
+        default=1,
+        help_text="Número do intervalo para gerar as próximas recorrências.",
+    )
+    recurrence_interval_unit = models.CharField(
+        "Unidade do intervalo",
+        max_length=10,
+        choices=Transaction.IntervalUnit.choices,
+        default=Transaction.IntervalUnit.MONTH,
+    )
+    installment_count = models.PositiveSmallIntegerField(
+        "Quantidade de parcelas",
+        null=True,
+        blank=True,
+        help_text="Informe apenas quando a recorrência for Parcelado.",
+    )
+
+    # NFS-e
+    NFSE_PENDING = "nfse_pending"
+    NFSE_PROCESSING = "nfse_processing"
+    NFSE_ISSUED = "nfse_issued"
+    NFSE_FAILED = "nfse_failed"
+    NFSE_STATUS_CHOICES = [
+        (NFSE_PENDING, "Aguardando emissão"),
+        (NFSE_PROCESSING, "Emitindo..."),
+        (NFSE_ISSUED, "NFS-e emitida"),
+        (NFSE_FAILED, "Falha na emissão"),
+    ]
+    nfse_status = models.CharField(
+        "Status NFS-e", max_length=20, choices=NFSE_STATUS_CHOICES, null=True, blank=True
+    )
+    nfse_number = models.CharField("Número NFS-e", max_length=50, blank=True)
+    nfse_error = models.TextField("Erro NFS-e", blank=True)
+    nfse_requested_at = models.DateTimeField("NFS-e solicitada em", null=True, blank=True)
 
     paid_at = models.DateField("Data de pagamento", null=True, blank=True)
     transaction = models.OneToOneField(

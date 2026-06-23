@@ -1,4 +1,5 @@
 from decimal import Decimal
+from unittest.mock import MagicMock, patch
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -94,6 +95,7 @@ class TenantIsolationTests(TestCase):
         self.assertContains(response, shared_account.name)
         self.assertNotContains(response, private_account.name)
 
+
 class TenantViewsTest(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user(
@@ -111,18 +113,78 @@ class TenantViewsTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "tenants/tenant_form.html")
 
+    @patch("tenants.views.urlopen")
+    def test_cep_lookup_view_prefills_address_data(self, mock_urlopen):
+        payload = (
+            b'{"logradouro":"Rua Exemplo","bairro":"Centro","localidade":"Goiania",'
+            b'"uf":"GO","cep":"74000-000","complemento":"Sala 1"}'
+        )
+        mock_response = MagicMock()
+        mock_response.read.return_value = payload
+        mock_urlopen.return_value.__enter__.return_value = mock_response
+
+        response = self.client.get(reverse("tenants:cep-lookup", args=["74000000"]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json(),
+            {
+                "address": "Rua Exemplo",
+                "district": "Centro",
+                "city": "Goiania",
+                "state": "GO",
+                "postal_code": "74000-000",
+                "complement": "Sala 1",
+            },
+        )
+
+    def test_cep_lookup_view_rejects_invalid_cep(self):
+        response = self.client.get(reverse("tenants:cep-lookup", args=["123"]))
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["error"], "CEP invalido.")
+
     def test_tenant_update_view_post(self):
-        response = self.client.post(reverse("tenants:update"), {
-            "name": "New Name",
-            "document": "12.345.678/0001-99",
-            "email": "contact@newname.com",
-            "phone": "11999999999",
-            "address": "Rua Teste, 123",
-            "city": "São Paulo",
-        })
+        response = self.client.post(
+            reverse("tenants:update"),
+            {
+                "name": "New Name",
+                "document": "12.345.678/0001-99",
+                "email": "contact@newname.com",
+                "phone": "11999999999",
+                "address": "Rua Teste",
+                "address_number": "123",
+                "address_complement": "Sala 4",
+                "district": "Centro",
+                "city": "Sao Paulo",
+                "state": "sp",
+                "postal_code": "01001-000",
+            },
+        )
         self.assertEqual(response.status_code, 302)
-        
+
         self.tenant.refresh_from_db()
         self.assertEqual(self.tenant.name, "New Name")
         self.assertEqual(self.tenant.document, "12.345.678/0001-99")
         self.assertEqual(self.tenant.email, "contact@newname.com")
+        self.assertEqual(self.tenant.address, "Rua Teste")
+        self.assertEqual(self.tenant.address_number, "123")
+        self.assertEqual(self.tenant.address_complement, "Sala 4")
+        self.assertEqual(self.tenant.district, "Centro")
+        self.assertEqual(self.tenant.city, "Sao Paulo")
+        self.assertEqual(self.tenant.state, "SP")
+        self.assertEqual(self.tenant.postal_code, "01001-000")
+
+    def test_tenant_full_address_formats_complete_address(self):
+        self.tenant.address = "Rua Teste"
+        self.tenant.address_number = "123"
+        self.tenant.address_complement = "Sala 4"
+        self.tenant.district = "Centro"
+        self.tenant.city = "Sao Paulo"
+        self.tenant.state = "SP"
+        self.tenant.postal_code = "01001-000"
+
+        self.assertEqual(
+            self.tenant.full_address,
+            "Rua Teste, 123, Sala 4, Centro | Sao Paulo - SP | CEP 01001-000",
+        )

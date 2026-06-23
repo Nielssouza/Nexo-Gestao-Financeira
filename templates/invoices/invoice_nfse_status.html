@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}Status NFS-e — Fatura {{ invoice.number_display }} | Nexo{% endblock %}
+{% block page_header %}{% endblock %}
+{% block main_class %}px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-36{% endblock %}
+
+{% block content %}
+<section class="app-page space-y-4 max-w-xl mx-auto">
+
+    <div class="flex items-center gap-3">
+        <a href="{% url 'invoices:detail' invoice.pk %}" class="text-slate-400 hover:text-slate-200">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        </a>
+        <div>
+            <h1 class="app-title mb-0">Emissão NFS-e</h1>
+            <p class="text-xs text-slate-500 mt-0.5">Fatura {{ invoice.number_display }}</p>
+        </div>
+    </div>
+
+    <div id="nfse-status-card"
+         hx-get="{% url 'invoices:nfse-status' invoice.pk %}"
+         hx-trigger="every 3s"
+         hx-swap="outerHTML"
+         {% if invoice.nfse_status == 'nfse_issued' or invoice.nfse_status == 'nfse_failed' %}data-polling-done="true"{% endif %}>
+        {% include "invoices/partials/nfse_status_card.html" %}
+    </div>
+
+    <a href="{% url 'invoices:detail' invoice.pk %}" class="app-btn-secondary block text-center">Voltar para a fatura</a>
+
+</section>
+
+<script>
+    // Para polling quando já terminou
+    document.addEventListener('htmx:afterSwap', function(e) {
+        if (e.target.dataset.pollingDone) {
+            e.target.removeAttribute('hx-trigger');
+            htmx.process(e.target);
+        }
+    });
+</script>
+{% endblock %}

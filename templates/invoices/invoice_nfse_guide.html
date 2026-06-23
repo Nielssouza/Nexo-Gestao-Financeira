@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% load formatters %}
+
+{% block title %}Emitir NFS-e — Fatura {{ invoice.number_display }} | Nexo{% endblock %}
+{% block page_header %}{% endblock %}
+{% block main_class %}px-5 pt-[max(1.5rem,env(safe-area-inset-top))] pb-36{% endblock %}
+
+{% block content %}
+<section class="app-page space-y-4 max-w-2xl mx-auto">
+
+    <div class="flex items-center gap-3">
+        <a href="{% url 'invoices:detail' invoice.pk %}" class="text-slate-400 hover:text-slate-200">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+        </a>
+        <div>
+            <h1 class="app-title mb-0">Emitir NFS-e</h1>
+            <p class="text-xs text-slate-500 mt-0.5">Fatura {{ invoice.number_display }} · {{ invoice.client_name }}</p>
+        </div>
+    </div>
+
+    {# Banner explicativo #}
+    <div class="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4 flex gap-3">
+        <svg class="w-5 h-5 text-blue-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        <div class="text-sm text-slate-300 space-y-1">
+            <p class="font-semibold text-blue-300">Como funciona</p>
+            <p>Use os dados abaixo para preencher a NFS-e no portal do governo. Copie cada campo com um toque e cole diretamente no portal.</p>
+        </div>
+    </div>
+
+    {# Botão portal #}
+    <a href="https://www.nfse.gov.br/EmissorNacional/Login" target="_blank" rel="noopener noreferrer"
+       class="app-btn-primary flex items-center justify-center gap-2 w-full">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+        Abrir portal NFS-e gov.br
+    </a>
+
+    {# Passo a passo #}
+    <div class="card space-y-2">
+        <p class="text-[0.68rem] font-semibold uppercase tracking-widest text-slate-500">Passo a passo</p>
+        <ol class="space-y-2 text-sm text-slate-300">
+            <li class="flex gap-2"><span class="shrink-0 w-5 h-5 rounded-full bg-slate-700 text-slate-300 text-xs flex items-center justify-center font-bold">1</span>Acesse o portal acima e entre com sua conta gov.br (nível Prata ou Ouro)</li>
+            <li class="flex gap-2"><span class="shrink-0 w-5 h-5 rounded-full bg-slate-700 text-slate-300 text-xs flex items-center justify-center font-bold">2</span>Clique em <strong class="text-white">Emitir NFS-e</strong></li>
+            <li class="flex gap-2"><span class="shrink-0 w-5 h-5 rounded-full bg-slate-700 text-slate-300 text-xs flex items-center justify-center font-bold">3</span>Preencha os campos com os dados copiados abaixo</li>
+            <li class="flex gap-2"><span class="shrink-0 w-5 h-5 rounded-full bg-slate-700 text-slate-300 text-xs flex items-center justify-center font-bold">4</span>Confirme e baixe o PDF da nota emitida</li>
+        </ol>
+    </div>
+
+    {# Dados do tomador #}
+    <div class="card space-y-3">
+        <p class="text-[0.68rem] font-semibold uppercase tracking-widest text-slate-500">Tomador do Serviço</p>
+
+        {% include "invoices/partials/nfse_field.html" with label="Nome / Razão Social" value=invoice.client_name %}
+        {% if invoice.client_document %}
+            {% include "invoices/partials/nfse_field.html" with label="CPF / CNPJ" value=invoice.client_document %}
+        {% endif %}
+        {% if invoice.client_email %}
+            {% include "invoices/partials/nfse_field.html" with label="E-mail" value=invoice.client_email %}
+        {% endif %}
+        {% if invoice.client_address %}
+            {% include "invoices/partials/nfse_field.html" with label="Endereço" value=invoice.client_address %}
+        {% endif %}
+        {% if invoice.client_city %}
+            {% include "invoices/partials/nfse_field.html" with label="Município" value=invoice.client_city %}
+        {% endif %}
+    </div>
+
+    {# Dados do serviço #}
+    <div class="card space-y-3">
+        <p class="text-[0.68rem] font-semibold uppercase tracking-widest text-slate-500">Serviço</p>
+
+        {% if invoice.service_code %}
+            {% include "invoices/partials/nfse_field.html" with label="Código do Serviço (LC 116)" value=invoice.service_code %}
+        {% endif %}
+        {% if service_code_description %}
+            {% include "invoices/partials/nfse_field.html" with label="Descrição do Código" value=service_code_description %}
+        {% endif %}
+        {% include "invoices/partials/nfse_field.html" with label="Discriminação dos Serviços" value=invoice.service_description multiline=True %}
+        {% include "invoices/partials/nfse_field.html" with label="Competência (mês/ano)" value=invoice.issue_date|date:"m/Y" %}
+    </div>
+
+    {# Valores #}
+    <div class="card space-y-3">
+        <p class="text-[0.68rem] font-semibold uppercase tracking-widest text-slate-500">Valores</p>
+
+        {% include "invoices/partials/nfse_field.html" with label="Valor do Serviço (R$)" value=invoice.gross_value %}
+        {% if invoice.deductions > 0 %}
+            {% include "invoices/partials/nfse_field.html" with label="Deduções (R$)" value=invoice.deductions %}
+            {% include "invoices/partials/nfse_field.html" with label="Base de Cálculo (R$)" value=invoice.calculation_base %}
+        {% endif %}
+        {% if invoice.iss_rate > 0 %}
+            {% include "invoices/partials/nfse_field.html" with label="Alíquota ISS (%)" value=invoice.iss_rate %}
+            {% include "invoices/partials/nfse_field.html" with label="Valor ISS (R$)" value=invoice.iss_value %}
+            {% if invoice.iss_withheld %}
+                {% include "invoices/partials/nfse_field.html" with label="ISS Retido na Fonte" value="Sim" %}
+            {% endif %}
+        {% endif %}
+    </div>
+
+    {# Botão final #}
+    <a href="https://www.nfse.gov.br/EmissorNacional/Login" target="_blank" rel="noopener noreferrer"
+       class="app-btn-primary flex items-center justify-center gap-2 w-full">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
+        Abrir portal NFS-e gov.br
+    </a>
+
+    <a href="{% url 'invoices:detail' invoice.pk %}" class="app-btn-secondary block text-center">Voltar para a fatura</a>
+
+</section>
+
+<script>
+function copyField(btn) {
+    const value = btn.dataset.value;
+    navigator.clipboard.writeText(value).then(() => {
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>';
+        btn.classList.add('text-emerald-400');
+        setTimeout(() => {
+            btn.innerHTML = orig;
+            btn.classList.remove('text-emerald-400');
+        }, 1500);
+    });
+}
+</script>
+{% endblock %}

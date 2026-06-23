@@ -23,11 +23,11 @@
     <div class="grid gap-3" style="grid-template-columns:repeat(auto-fit,minmax(10rem,1fr));">
         <article class="card">
             <p class="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-slate-400">Total faturado</p>
-            <p class="app-item-value mt-2">{{ summary_total_gross|brl }}</p>
+            <p style="margin-top:4px;font-size:18px;font-weight:700;line-height:1;color:#f1f5f9;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">{{ summary_total_gross|brl }}</p>
         </article>
         <article class="card">
             <p class="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-slate-400">Quantidade</p>
-            <p class="mt-2 text-2xl font-bold text-slate-50">{{ summary_invoice_count }}</p>
+            <p style="margin-top:4px;font-size:18px;font-weight:700;line-height:1;color:#f1f5f9;">{{ summary_invoice_count }}</p>
         </article>
     </div>
 

@@ -184,7 +184,7 @@
         <div class="value">Responsável: {{ invoice.user.get_full_name|default:invoice.user.email }}</div>
         {% if invoice.tenant.email %}<div class="value">E-mail comercial: {{ invoice.tenant.email }}</div>{% endif %}
         {% if invoice.tenant.phone %}<div class="value">Telefone: {{ invoice.tenant.phone }}</div>{% endif %}
-        {% if invoice.tenant.address %}<div class="value">Endereço: {{ invoice.tenant.address }}{% if invoice.tenant.city %} — {{ invoice.tenant.city }}{% endif %}</div>{% endif %}
+        {% if invoice.tenant.full_address %}<div class="value">Endereço: {{ invoice.tenant.full_address }}</div>{% endif %}
     </div>
 
     <div class="section">
