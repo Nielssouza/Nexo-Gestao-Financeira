@@ -299,7 +299,7 @@ class DashboardChartsMonthScopeTests(TestCase):
         self.assertEqual(response.context["credit_card_limit"], Decimal("430.50"))
         self.assertEqual(
             response.context["consolidated_balance"],
-            response.context["monthly_balance"] + Decimal("430.50"),
+            response.context["total_balance"],
         )
         self.assertContains(response, "Cartão aberto")
         self.assertContains(response, "Total cartão")

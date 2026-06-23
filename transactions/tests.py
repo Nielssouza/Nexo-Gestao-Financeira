@@ -866,7 +866,7 @@ class TransactionScopeAndMonthLockTests(TestCase):
         self.assertEqual(response.context["credit_card_limit"], Decimal("880.05"))
         self.assertEqual(
             response.context["consolidated_balance"],
-            response.context["monthly_balance"] + Decimal("880.05"),
+            response.context["current_balance"],
         )
         self.assertContains(response, "Cartão em aberto")
         self.assertContains(response, "Total cartão")

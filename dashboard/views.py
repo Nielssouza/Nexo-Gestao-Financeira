@@ -277,11 +277,10 @@ class DashboardContextMixin(LoginRequiredMixin):
         credit_card_month_count = credit_card_expenses.count()
         credit_card_limit = calculate_credit_card_available_limit(tenant, selected_month)
         monthly_balance = calculate_monthly_balance(user, selected_month, tenant=tenant)
-        consolidated_balance = monthly_balance + credit_card_limit
+        
         pending_bank_total = pending_expenses.exclude(
             account__account_type=Account.AccountType.CARD
         ).aggregate(total=Coalesce(Sum("amount"), Decimal("0.00")))["total"]
-        balance_after_pending = consolidated_balance - pending_bank_total
 
         category_source = current_month_transactions.filter(
             transaction_type=Transaction.TransactionType.EXPENSE
@@ -343,12 +342,16 @@ class DashboardContextMixin(LoginRequiredMixin):
                 "color": type_colors.get(itype, "#94a3b8"),
             })
 
+        total_balance = calculate_user_balance(user, balance_cutoff_date, tenant=tenant)
+        consolidated_balance = total_balance + net_invested
+        balance_after_pending = consolidated_balance - pending_bank_total
+
         selected_month_label, prev_month_query, next_month_query = self._build_month_navigation(
             selected_month
         )
 
         return {
-            "total_balance": calculate_user_balance(user, balance_cutoff_date, tenant=tenant),
+            "total_balance": total_balance,
             "monthly_income": monthly_income,
             "monthly_expense": monthly_expense,
             "monthly_balance": monthly_balance,
