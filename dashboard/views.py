@@ -8,6 +8,7 @@ from django.utils import timezone
 from django.views.generic import TemplateView
 
 from accounts.models import Account
+from invoices.models import Invoice
 from common.balance import (
     calculate_credit_card_available_limit,
     calculate_monthly_balance,
@@ -347,6 +348,16 @@ class DashboardContextMixin(LoginRequiredMixin):
         consolidated_balance = total_balance + safe_credit_limit + net_invested
         balance_after_pending = consolidated_balance - pending_bank_total
 
+        invoices_month_qs = Invoice.objects.filter(
+            tenant=tenant,
+            issue_date__year=selected_month.year,
+            issue_date__month=selected_month.month,
+        ).exclude(status=Invoice.CANCELLED)
+        invoice_month_total = invoices_month_qs.aggregate(
+            total=Coalesce(Sum("gross_value"), Decimal("0.00"))
+        )["total"]
+        invoice_month_count = invoices_month_qs.count()
+
         selected_month_label, prev_month_query, next_month_query = self._build_month_navigation(
             selected_month
         )
@@ -385,6 +396,8 @@ class DashboardContextMixin(LoginRequiredMixin):
             "total_earnings": total_earnings,
             "net_invested": net_invested,
             "inv_by_type": inv_by_type,
+            "invoice_month_total": invoice_month_total,
+            "invoice_month_count": invoice_month_count,
         }
 
 

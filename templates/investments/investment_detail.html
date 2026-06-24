@@ -7,22 +7,21 @@
 
 {% block content %}
 <section class="app-page space-y-4">
+    <a href="{% url 'investments:list' %}" class="app-link-inline" style="display:inline-flex;align-items:center;gap:0.4rem;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+        <span>Voltar</span>
+    </a>
+
     <div class="flex items-start justify-between gap-3">
         <div>
             <h1 class="app-title">{{ investment.name }}</h1>
             <p class="app-subtitle">
                 {{ investment.get_investment_type_display }}
-                {% if investment.broker %} · {{ investment.broker }}{% endif %}
+                {% if investment.broker %} &middot; {{ investment.broker }}{% endif %}
             </p>
         </div>
         <a href="{% url 'investments:update' investment.pk %}" class="app-top-action">Editar</a>
     </div>
-
-    {% if messages %}
-        {% for message in messages %}
-            <p class="app-form-error" style="border-color: rgba(74,222,128,0.35); background: rgba(20,83,45,0.25); color: #bbf7d0;">{{ message }}</p>
-        {% endfor %}
-    {% endif %}
 
     <article class="card space-y-3">
         <h2 class="app-title-sm">Resumo</h2>
@@ -86,7 +85,7 @@
                     <article class="card flex items-center justify-between gap-3">
                         <div>
                             <p class="app-item-title">{{ entry.get_entry_type_display }}</p>
-                            <p class="app-item-meta">{{ entry.date|date:"d/m/Y" }}{% if entry.description %} · {{ entry.description }}{% endif %}</p>
+                            <p class="app-item-meta">{{ entry.date|date:"d/m/Y" }}{% if entry.description %} &middot; {{ entry.description }}{% endif %}</p>
                         </div>
                         <p class="app-item-value {% if entry.entry_type == 'deposit' %}inv-entry-deposit{% elif entry.entry_type == 'withdrawal' %}inv-entry-withdrawal{% else %}inv-entry-earnings{% endif %}" data-sensitive-value data-mask="R$ ****">
                             {% if entry.entry_type == 'withdrawal' %}-{% else %}+{% endif %}{{ entry.amount|brl }}
@@ -99,6 +98,5 @@
         {% endif %}
     </section>
 
-    <a href="{% url 'investments:list' %}" class="app-link-inline" style="display:block;text-align:center;padding:0.5rem 0;">← Voltar para investimentos</a>
 </section>
 {% endblock %}

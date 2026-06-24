@@ -1614,6 +1614,12 @@ body {
     }
 }
 
+.txn-search-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
 .txn-search-wrap {
     display: flex;
     align-items: center;

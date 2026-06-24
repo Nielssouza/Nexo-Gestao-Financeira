@@ -41,7 +41,7 @@
         <div class="txn-bottom-more-panel hidden" id="txn-bottom-more-panel">
             <a href="{% url 'transactions:statement' %}" class="txn-more-link {% if current|slice:':14' == '/transactions/' %}txn-more-active{% endif %}">
                 <span class="txn-more-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7h14"/><path d="M5 12h14"/><path d="M5 17h14"/></svg></span>
-                Transações
+                Financeiro
             </a>
             <a href="{% url 'invoices:list' %}" class="txn-more-link {% if current|slice:':9' == '/faturas/' %}txn-more-active{% endif %}">
                 <span class="txn-more-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8"/><path d="M8 12h8"/><path d="M8 16h5"/></svg></span>

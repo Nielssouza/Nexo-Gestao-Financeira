@@ -15,12 +15,6 @@
         <a href="{% url 'investments:create' %}" class="app-top-action">Novo</a>
     </div>
 
-    {% if messages %}
-        {% for message in messages %}
-            <p class="app-form-error" style="border-color: rgba(74,222,128,0.35); background: rgba(20,83,45,0.25); color: #bbf7d0;">{{ message }}</p>
-        {% endfor %}
-    {% endif %}
-
     {% if investments %}
         <div class="space-y-3">
             {% for inv in investments %}

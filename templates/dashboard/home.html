@@ -261,6 +261,25 @@
     </section>
 
     <section class="dash-section">
+        <div class="dash-goals-header">
+            <a href="{% url 'invoices:list' %}?month={{ selected_month_value }}" class="dash-section-title mb-0" style="text-decoration:none;color:inherit;">Faturamento</a>
+            <a href="{% url 'invoices:list' %}" class="dash-goals-icon" aria-label="Ver faturas">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8"/><path d="M8 12h8"/><path d="M8 16h5"/></svg>
+            </a>
+        </div>
+        <div class="dash-alert-grid">
+            <article class="dash-alert-card">
+                <div class="dash-alert-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8"/><path d="M8 12h8"/><path d="M8 16h5"/></svg>
+                </div>
+                <span class="dash-alert-badge">{{ invoice_month_count }}</span>
+                <p class="dash-alert-title">Faturas emitidas</p>
+                <p class="dash-alert-amount" data-sensitive-value data-mask="R$ ****">{{ invoice_month_total|brl }}</p>
+            </article>
+        </div>
+    </section>
+
+    <section class="dash-section">
         <h2 class="dash-section-title">{{ category_title }}</h2>
         <a href="{% url 'dashboard:charts' %}?month={{ selected_month_value }}" class="dash-category-card-link" aria-label="Abrir graficos">
             <article class="dash-category-card dash-category-card-clickable">
