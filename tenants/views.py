@@ -23,6 +23,18 @@ class TenantUpdateView(LoginRequiredMixin, UpdateView):
     def get_object(self, queryset=None):
         return self.request.tenant
 
+    def post(self, request, *args, **kwargs):
+        self.object = self.get_object()
+        form = self.get_form()
+        try:
+            is_valid = form.is_valid()
+        except Exception as exc:
+            messages.error(request, f"Erro ao fazer upload do logo: {type(exc).__name__}: {exc}")
+            return self.render_to_response(self.get_context_data(form=form))
+        if is_valid:
+            return self.form_valid(form)
+        return self.form_invalid(form)
+
     def form_valid(self, form):
         clear = self.request.POST.get("logo-clear")
         if clear:
