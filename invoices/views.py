@@ -245,7 +245,7 @@ class InvoiceNfseStatusView(UserQuerySetMixin, DetailView):
     template_name = "invoices/invoice_nfse_status.html"
     context_object_name = "invoice"
 
-    _TIMEOUT_SECONDS = 180  # 3 minutos
+    _TIMEOUT_SECONDS = 300  # 5 minutos (maior que o soft_time_limit da task)
 
     def _check_timeout(self, invoice):
         if invoice.nfse_status not in (Invoice.NFSE_PENDING, Invoice.NFSE_PROCESSING):

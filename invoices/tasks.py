@@ -1,12 +1,22 @@
 import logging
 
 from celery import shared_task
+from celery.exceptions import SoftTimeLimitExceeded
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
+TASK_SOFT_LIMIT = 240  # 4 min — mata suavemente, salva o erro
+TASK_HARD_LIMIT = 270  # 4.5 min — kill forçado pelo Celery
 
-@shared_task(bind=True, max_retries=0, name="invoices.emit_nfse")
+
+@shared_task(
+    bind=True,
+    max_retries=0,
+    name="invoices.emit_nfse",
+    soft_time_limit=TASK_SOFT_LIMIT,
+    time_limit=TASK_HARD_LIMIT,
+)
 def emit_nfse_task(self, invoice_id: int) -> dict:
     from invoices.models import Invoice
     from invoices.nfse_automation import emit_nfse
@@ -53,6 +63,16 @@ def emit_nfse_task(self, invoice_id: int) -> dict:
         invoice.nfse_error = ""
         invoice.save(update_fields=["nfse_status", "nfse_number", "nfse_error"])
         return {"ok": True, "nfse_number": nfse_number}
+
+    except SoftTimeLimitExceeded:
+        logger.warning("Timeout ao emitir NFS-e para fatura %s", invoice_id)
+        invoice.nfse_status = Invoice.NFSE_FAILED
+        invoice.nfse_error = (
+            "Tempo limite excedido (4 min). O portal NFS-e demorou demais para responder. "
+            "Tente novamente ou emita manualmente."
+        )
+        invoice.save(update_fields=["nfse_status", "nfse_error"])
+        return {"ok": False, "error": "Timeout"}
 
     except Exception as exc:
         logger.exception("Falha ao emitir NFS-e para fatura %s", invoice_id)

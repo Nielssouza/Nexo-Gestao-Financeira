@@ -305,6 +305,8 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_SOFT_TIME_LIMIT = 240   # 4 min — SoftTimeLimitExceeded (capturável)
+CELERY_TASK_TIME_LIMIT = 270        # 4.5 min — kill forçado (fallback)
 
 # Cache — usa Redis se disponível (necessário para rate limiting em múltiplos dynos),
 # caso contrário cai para memória local (funciona em single-process).
