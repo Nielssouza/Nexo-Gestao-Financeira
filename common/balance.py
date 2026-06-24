@@ -99,7 +99,7 @@ def calculate_credit_card_available_limit(tenant, selected_month):
         elif card.credit_limit is not None:
             card_limit = card.credit_limit
             
-        if card_limit is None:
+        if card_limit is None or card_limit == 0:
             # Fallback for prepaid cards or cards without a configured limit:
             # The available limit is simply the positive balance of the card account.
             from common.balance import calculate_account_balance
