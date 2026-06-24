@@ -343,7 +343,8 @@ class DashboardContextMixin(LoginRequiredMixin):
             })
 
         total_balance = calculate_user_balance(user, balance_cutoff_date, tenant=tenant)
-        consolidated_balance = total_balance + credit_card_limit + net_invested
+        safe_credit_limit = credit_card_limit if credit_card_limit is not None else Decimal("0.00")
+        consolidated_balance = total_balance + safe_credit_limit + net_invested
         balance_after_pending = consolidated_balance - pending_bank_total
 
         selected_month_label, prev_month_query, next_month_query = self._build_month_navigation(
