@@ -885,8 +885,25 @@ a:hover {
     padding-bottom: 110px;
   }
 
+  .app-content {
+    padding: var(--space-md);
+  }
+
   .kpi-grid {
     grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-sm);
+  }
+
+  .kpi-card {
+    padding: var(--space-sm) 10px;
+  }
+
+  .kpi-value {
+    font-size: 1.05rem;
+  }
+
+  .kpi-label {
+    font-size: 0.68rem;
   }
 
   .page-header {
