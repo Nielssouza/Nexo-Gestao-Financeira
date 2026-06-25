@@ -352,7 +352,7 @@ a:hover {
    ============================================ */
 
 .mobile-preview {
-  background: #1a1a1a;
+  background: #000;
   justify-content: center;
 }
 
@@ -409,9 +409,6 @@ a:hover {
 }
 
 @media (min-width: 769px) {
-  .mobile-preview .txn-bottom-nav {
-    display: flex;
-  }
   .mobile-preview .mobile-menu-btn {
     display: none;
   }
@@ -875,10 +872,6 @@ a:hover {
 
   .app-main {
     margin-left: 0;
-  }
-
-  .txn-bottom-nav {
-    display: flex;
   }
 
   .app-content {
@@ -1583,7 +1576,7 @@ a:hover {
   bottom: 0;
   z-index: 45;
   margin: 0 auto;
-  display: none;
+  display: flex;
   justify-content: space-around;
   align-items: end;
   gap: 0.7rem;
@@ -1603,6 +1596,15 @@ a:hover {
 
 .txn-bottom-nav::-webkit-scrollbar {
   display: none;
+}
+
+@media (min-width: 769px) {
+  .txn-bottom-nav {
+    display: none;
+  }
+  .mobile-preview .txn-bottom-nav {
+    display: flex;
+  }
 }
 
 .txn-tab-link {
