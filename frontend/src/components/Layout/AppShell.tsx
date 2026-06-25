@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
@@ -24,14 +24,26 @@ function readCollapsed(): boolean {
   try { return localStorage.getItem('sidebar-collapsed') === '1'; } catch { return false; }
 }
 
+function useIsSmallScreen(): boolean {
+  const [small, setSmall] = useState(() => window.innerWidth < 769);
+  useEffect(() => {
+    const handler = () => setSmall(window.innerWidth < 769);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+  return small;
+}
+
 export default function AppShell() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(readCollapsed);
   const [viewMode, setViewMode] = useState<ViewMode>(readViewMode);
   const location = useLocation();
+  const isSmallScreen = useIsSmallScreen();
 
   const title = pageTitles[location.pathname] || 'Nexo';
-  const isMobile = viewMode === 'mobile';
+  const isMobile = viewMode === 'mobile' || isSmallScreen;
+  const isPreviewFrame = viewMode === 'mobile' && !isSmallScreen;
 
   const toggleCollapse = () => {
     setSidebarCollapsed((prev) => {
@@ -51,7 +63,7 @@ export default function AppShell() {
 
   return (
     <ViewModeContext.Provider value={{ viewMode, isMobile, toggle: toggleViewMode }}>
-      <div className={`app-layout${isMobile ? ' mobile-preview' : ''}`}>
+      <div className={`app-layout${isPreviewFrame ? ' mobile-preview' : ''}`}>
         {!isMobile && (
           <Sidebar
             isOpen={sidebarOpen}
