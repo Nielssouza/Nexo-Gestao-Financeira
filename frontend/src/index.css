@@ -449,6 +449,82 @@ a:hover {
   flex-shrink: 0;
 }
 
+/* Sidebar collapse toggle button */
+.sidebar-collapse-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  width: 100%;
+  padding: 12px var(--space-lg);
+  border: none;
+  border-top: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+
+.sidebar-collapse-btn:hover {
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
+}
+
+/* Sidebar brand icon (shown only when collapsed) */
+.nav-brand-icon {
+  display: none;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--color-accent);
+}
+
+/* Collapsed state — desktop only */
+@media (min-width: 769px) {
+  .app-sidebar.collapsed {
+    width: var(--sidebar-collapsed);
+  }
+
+  .app-main.collapsed {
+    margin-left: var(--sidebar-collapsed);
+  }
+
+  .app-sidebar.collapsed .nav-brand-text {
+    display: none;
+  }
+
+  .app-sidebar.collapsed .nav-brand-icon {
+    display: block;
+  }
+
+  .app-sidebar.collapsed .nav-brand {
+    justify-content: center;
+    padding: var(--space-md);
+  }
+
+  .app-sidebar.collapsed .nav-section {
+    padding: var(--space-sm) var(--space-xs);
+  }
+
+  .app-sidebar.collapsed .nav-link {
+    justify-content: center;
+    padding: 10px;
+  }
+
+  .app-sidebar.collapsed .nav-link span {
+    display: none;
+  }
+
+  .app-sidebar.collapsed .sidebar-collapse-btn {
+    justify-content: center;
+    padding: 12px;
+  }
+
+  .app-sidebar.collapsed .sidebar-collapse-btn span {
+    display: none;
+  }
+}
+
 /* ============================================
    Table
    ============================================ */

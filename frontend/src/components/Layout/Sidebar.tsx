@@ -7,6 +7,8 @@ import {
   FileText,
   ShoppingCart,
   TrendingUp,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 
 const navItems = [
@@ -19,8 +21,14 @@ const navItems = [
   { to: '/investments', icon: TrendingUp, label: 'Investimentos' },
 ];
 
-export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+interface SidebarProps {
+  isOpen: boolean;
+  onClose: () => void;
+  collapsed: boolean;
+  onToggleCollapse: () => void;
+}
 
+export default function Sidebar({ isOpen, onClose, collapsed, onToggleCollapse }: SidebarProps) {
   return (
     <>
       {/* Mobile overlay */}
@@ -38,13 +46,14 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
         />
       )}
 
-      <aside className={`app-sidebar ${isOpen ? 'open' : ''}`}>
+      <aside className={`app-sidebar ${isOpen ? 'open' : ''} ${collapsed ? 'collapsed' : ''}`}>
         <div className="nav-brand">
           <span className="nav-brand-text">Nexo</span>
+          {collapsed && <span className="nav-brand-icon">N</span>}
         </div>
 
         <nav className="nav-section" style={{ flex: 1 }}>
-          <div className="nav-section-title">Menu</div>
+          {!collapsed && <div className="nav-section-title">Menu</div>}
           {navItems.map(({ to, icon: Icon, label }) => (
             <NavLink
               key={to}
@@ -52,6 +61,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
               end={to === '/'}
               className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
               onClick={onClose}
+              title={collapsed ? label : undefined}
             >
               <Icon className="icon" size={20} />
               <span>{label}</span>
@@ -59,6 +69,14 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
           ))}
         </nav>
 
+        <button
+          className="sidebar-collapse-btn"
+          onClick={onToggleCollapse}
+          title={collapsed ? 'Expandir menu' : 'Recolher menu'}
+        >
+          {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+          {!collapsed && <span>Recolher</span>}
+        </button>
       </aside>
     </>
   );
