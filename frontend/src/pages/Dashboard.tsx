@@ -240,6 +240,69 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Pendências e alertas */}
+      <div style={{ marginBottom: 'var(--space-xl)' }}>
+        <h3 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 'var(--space-md)' }}>
+          Pendências e alertas
+        </h3>
+        <div className="kpi-grid">
+          {/* Despesas pendentes */}
+          <div className="kpi-card" style={{ position: 'relative' }}>
+            {data.alerts.pending_expense_count > 0 && (
+              <span style={{ position: 'absolute', top: 10, right: 10, background: '#ef4444', color: '#fff', borderRadius: 999, fontSize: '0.65rem', fontWeight: 700, padding: '2px 7px', minWidth: 20, textAlign: 'center' }}>
+                {data.alerts.pending_expense_count}
+              </span>
+            )}
+            <div className="kpi-label">Despesas pendentes</div>
+            <div className="kpi-value negative">{formatCurrency(data.alerts.pending_expense_total)}</div>
+          </div>
+
+          {/* Cartão aberto */}
+          <div className="kpi-card" style={{ position: 'relative' }}>
+            {data.alerts.credit_card_open_count > 0 && (
+              <span style={{ position: 'absolute', top: 10, right: 10, background: '#3b82f6', color: '#fff', borderRadius: 999, fontSize: '0.65rem', fontWeight: 700, padding: '2px 7px', minWidth: 20, textAlign: 'center' }}>
+                {data.alerts.credit_card_open_count}
+              </span>
+            )}
+            <div className="kpi-label">Cartão aberto</div>
+            <div className="kpi-value negative">{formatCurrency(data.alerts.credit_card_open_total)}</div>
+          </div>
+
+          {/* Total cartão */}
+          <div className="kpi-card" style={{ position: 'relative' }}>
+            {data.alerts.credit_card_month_count > 0 && (
+              <span style={{ position: 'absolute', top: 10, right: 10, background: '#3b82f6', color: '#fff', borderRadius: 999, fontSize: '0.65rem', fontWeight: 700, padding: '2px 7px', minWidth: 20, textAlign: 'center' }}>
+                {data.alerts.credit_card_month_count}
+              </span>
+            )}
+            <div className="kpi-label">Total cartão</div>
+            <div className="kpi-value negative">{formatCurrency(data.alerts.credit_card_month_total)}</div>
+          </div>
+
+          {/* Limite do cartão */}
+          <div className="kpi-card">
+            <div className="kpi-label"><CreditCard size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} /> Limite do cartão</div>
+            <div className="kpi-value accent">{formatCurrency(data.alerts.credit_card_limit)}</div>
+          </div>
+
+          {/* Balanço consolidado */}
+          <div className="kpi-card">
+            <div className="kpi-label">Balanço consolidado</div>
+            <div className={`kpi-value ${parseFloat(data.alerts.consolidated_balance) >= 0 ? 'positive' : 'negative'}`}>
+              {formatCurrency(data.alerts.consolidated_balance)}
+            </div>
+          </div>
+
+          {/* Disponível */}
+          <div className="kpi-card">
+            <div className="kpi-label">Disponível</div>
+            <div className={`kpi-value ${parseFloat(data.alerts.balance_after_pending) >= 0 ? 'accent' : 'negative'}`}>
+              {formatCurrency(data.alerts.balance_after_pending)}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Charts Row */}
       <div style={{ display: 'grid', gridTemplateColumns: cols2, gap: 'var(--space-md)', marginBottom: 'var(--space-xl)' }}>
         {/* Expense Trend */}

@@ -78,6 +78,49 @@ class DashboardView(APIView):
             tenant, selected_month
         )
 
+        # Pendências e alertas
+        pending_expenses = monthly_txns.filter(
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            is_cleared=False,
+        )
+        pending_expense_total = pending_expenses.aggregate(
+            total=Coalesce(Sum("amount"), ZERO)
+        )["total"]
+        pending_expense_count = pending_expenses.count()
+
+        card_expenses = monthly_txns.filter(
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            account__account_type=Account.AccountType.CARD,
+        )
+        credit_card_month_total = card_expenses.aggregate(
+            total=Coalesce(Sum("amount"), ZERO)
+        )["total"]
+        credit_card_month_count = card_expenses.count()
+        card_open = card_expenses.filter(is_cleared=False)
+        credit_card_open_total = card_open.aggregate(
+            total=Coalesce(Sum("amount"), ZERO)
+        )["total"]
+        credit_card_open_count = card_open.count()
+
+        pending_bank_total = pending_expenses.exclude(
+            account__account_type=Account.AccountType.CARD
+        ).aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
+
+        # Investments net
+        from investments.models import Investment, InvestmentEntry
+        inv_entries = InvestmentEntry.objects.filter(tenant=tenant, investment__is_active=True)
+        inv_deposited = inv_entries.filter(
+            entry_type=InvestmentEntry.EntryType.DEPOSIT
+        ).aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
+        inv_withdrawn = inv_entries.filter(
+            entry_type=InvestmentEntry.EntryType.WITHDRAWAL
+        ).aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
+        net_invested = inv_deposited - inv_withdrawn
+
+        safe_credit = credit_available if credit_available is not None else ZERO
+        consolidated_balance = user_balance + safe_credit + net_invested
+        balance_after_pending = consolidated_balance - pending_bank_total
+
         # Category breakdown (expenses)
         expense_by_category = list(
             monthly_txns.filter(
@@ -179,6 +222,17 @@ class DashboardView(APIView):
                 "monthly_balance": str(monthly_balance),
                 "credit_available": str(credit_available),
                 "investments_total": str(investments_total),
+            },
+            "alerts": {
+                "pending_expense_count": pending_expense_count,
+                "pending_expense_total": str(pending_expense_total),
+                "credit_card_open_count": credit_card_open_count,
+                "credit_card_open_total": str(credit_card_open_total),
+                "credit_card_month_count": credit_card_month_count,
+                "credit_card_month_total": str(credit_card_month_total),
+                "credit_card_limit": str(safe_credit),
+                "consolidated_balance": str(consolidated_balance),
+                "balance_after_pending": str(balance_after_pending),
             },
             "invoices": {
                 "total_gross": str(invoices_summary["total_gross"]),

@@ -44,6 +44,18 @@ export interface DueNotifications {
   items: DueNotificationItem[];
 }
 
+export interface DashboardAlerts {
+  pending_expense_count: number;
+  pending_expense_total: string;
+  credit_card_open_count: number;
+  credit_card_open_total: string;
+  credit_card_month_count: number;
+  credit_card_month_total: string;
+  credit_card_limit: string;
+  consolidated_balance: string;
+  balance_after_pending: string;
+}
+
 export interface DashboardData {
   selected_month: string;
   month_label: string;
@@ -57,6 +69,7 @@ export interface DashboardData {
   expense_trend: ExpenseTrendPoint[];
   accounts: AccountSummary[];
   due_notifications: DueNotifications;
+  alerts: DashboardAlerts;
 }
 
 export async function fetchDashboard(month?: string): Promise<DashboardData> {
