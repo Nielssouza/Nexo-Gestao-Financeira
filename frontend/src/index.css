@@ -881,13 +881,17 @@ a:hover {
     margin-left: 0;
   }
 
+  .app-content {
+    padding-bottom: 110px;
+  }
+
   .kpi-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 
   .page-header {
-    flex-direction: column;
-    align-items: flex-start;
+    flex-direction: row;
+    align-items: center;
   }
 }
 

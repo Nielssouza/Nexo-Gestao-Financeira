@@ -70,7 +70,7 @@ export default function AppShell() {
           <main className="app-content animate-fade-in" key={location.pathname}>
             <Outlet />
           </main>
-          {isMobile && <BottomNav />}
+          <BottomNav />
         </div>
       </div>
     </ViewModeContext.Provider>
