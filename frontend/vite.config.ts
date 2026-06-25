@@ -1,10 +1,10 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-export default defineConfig(({ command }) => ({
-  base: command === 'build' ? '/static/react/' : '/',
+export default defineConfig(() => ({
+  base: '/',
   build: {
-    outDir: '../backend/static/react',
+    outDir: 'dist',
     emptyOutDir: true,
   },
   plugins: [react()],

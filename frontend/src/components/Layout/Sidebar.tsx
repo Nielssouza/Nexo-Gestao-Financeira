@@ -7,10 +7,7 @@ import {
   FileText,
   ShoppingCart,
   TrendingUp,
-  Building2,
-  LogOut,
 } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -23,7 +20,6 @@ const navItems = [
 ];
 
 export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  const { tenant, logout } = useAuth();
 
   return (
     <>
@@ -63,26 +59,6 @@ export default function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose:
           ))}
         </nav>
 
-        <div className="nav-section">
-          <div className="nav-section-title">Empresa</div>
-          <NavLink
-            to="/settings/company"
-            className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-            onClick={onClose}
-          >
-            <Building2 className="icon" size={20} />
-            <span>{tenant?.name || 'Configurações'}</span>
-          </NavLink>
-
-          <button
-            className="nav-link"
-            onClick={logout}
-            style={{ width: '100%', border: 'none', cursor: 'pointer', background: 'none', textAlign: 'left' }}
-          >
-            <LogOut className="icon" size={20} />
-            <span>Sair</span>
-          </button>
-        </div>
       </aside>
     </>
   );

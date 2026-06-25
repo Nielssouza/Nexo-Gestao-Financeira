@@ -6,8 +6,6 @@ import { ptBR } from 'date-fns/locale';
 import { 
   fetchTransactions, 
   fetchStatementSummary,
-  createTransaction, 
-  updateTransaction, 
   deleteTransaction, 
   toggleTransactionCleared, 
   toggleTransactionIgnored,
@@ -15,7 +13,7 @@ import {
 } from '../api/transactions';
 import { fetchAccounts } from '../api/accounts';
 import ClearTransactionModal from '../components/Transactions/ClearTransactionModal';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 function formatCurrency(value: string | number): string {
   const num = typeof value === 'string' ? parseFloat(value) : value;
@@ -47,7 +45,6 @@ export default function Transactions() {
   const [accountFilter, setAccountFilter] = useState('');
   const [orderBy, setOrderBy] = useState('-date');
   const navigate = useNavigate();
-
   const [clearingTx, setClearingTx] = useState<Transaction | null>(null);
   
   const queryClient = useQueryClient();
@@ -75,23 +72,9 @@ export default function Transactions() {
     queryFn: () => fetchStatementSummary({ month: monthParam }),
   });
 
-  const createMutation = useMutation({
-    mutationFn: createTransaction,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['statement_summary'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-    },
-  });
 
-  const updateMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: number; payload: any }) => updateTransaction(id, payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['statement_summary'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-    },
-  });
+
+
 
   const deleteMutation = useMutation({
     mutationFn: deleteTransaction,
@@ -124,9 +107,7 @@ export default function Transactions() {
     navigate(`/transactions/${tx.id}/edit`);
   };
 
-  const handleDelete = async (id: number) => {
-    await deleteMutation.mutateAsync(id);
-  };
+
 
   const navigateMonth = (delta: number) => {
     setSearchParams({ month: shiftMonth(monthParam, delta) });
@@ -365,26 +346,6 @@ export default function Transactions() {
           await toggleMutation.mutateAsync({ id, cleared_date: date });
         }}
       />
-
-      {/* Bottom Nav */}
-      <nav className="txn-bottom-nav md:hidden">
-        <Link to="/" className="txn-tab-link">
-          <span className="txn-tab-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
-          </span>
-          <span>Principal</span>
-        </Link>
-
-        <div className="fab-speed-dial">
-          <Link to="/transactions/new" className="txn-center-fab" aria-label="Nova transação">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="12" y1="5" x2="12" y2="19"></line>
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
-          </Link>
-        </div>
-
-      </nav>
     </div>
   );
 }

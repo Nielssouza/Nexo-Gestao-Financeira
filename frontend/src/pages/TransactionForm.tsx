@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchTransactionById, createTransaction, updateTransaction, type CreateTransactionPayload } from '../api/transactions';
 import { fetchAccounts } from '../api/accounts';
 import { fetchCategories } from '../api/categories';
@@ -121,7 +121,7 @@ export default function TransactionForm() {
     return <div style={{ padding: '2rem', color: '#fff' }}>Carregando transação...</div>;
   }
 
-  const filteredCategories = categories?.filter(c => type === 'expense' ? c.type === 'expense' : type === 'income' ? c.type === 'income' : false) || [];
+  const filteredCategories = categories?.filter(c => type === 'expense' ? c.category_type === 'expense' : type === 'income' ? c.category_type === 'income' : false) || [];
 
   return (
     <section className="app-page space-y-4" style={{ padding: 'max(1.5rem, env(safe-area-inset-top)) 1.25rem 9rem', minHeight: '100vh', paddingBottom: '9rem' }}>
