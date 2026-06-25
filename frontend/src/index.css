@@ -347,6 +347,50 @@ a:hover {
   min-height: 100vh;
 }
 
+/* ============================================
+   Mobile Preview Mode
+   ============================================ */
+
+.mobile-preview {
+  background: #1a1a1a;
+  justify-content: center;
+}
+
+.mobile-preview .app-main {
+  margin-left: 0;
+  width: 100%;
+  max-width: 430px;
+  min-height: 100vh;
+  border-left: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+  box-shadow: 0 0 60px rgba(0, 0, 0, 0.6);
+}
+
+.mobile-preview .app-content {
+  padding-bottom: 100px;
+}
+
+.mobile-preview .txn-bottom-nav {
+  max-width: 430px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+}
+
+/* BottomNav hidden on desktop by default */
+@media (min-width: 769px) {
+  .txn-bottom-nav {
+    display: none;
+  }
+  .mobile-preview .txn-bottom-nav {
+    display: flex;
+  }
+  .mobile-preview .mobile-menu-btn {
+    display: none;
+  }
+}
+
 .app-sidebar {
   position: fixed;
   top: 0;

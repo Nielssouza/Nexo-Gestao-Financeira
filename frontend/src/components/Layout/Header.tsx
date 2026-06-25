@@ -1,14 +1,16 @@
 import { useState, useRef, useEffect } from 'react';
-import { Menu, Building2, LogOut } from 'lucide-react';
+import { Menu, Building2, LogOut, Smartphone, Monitor } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface HeaderProps {
   title: string;
   onMenuClick: () => void;
+  viewMode?: 'desktop' | 'mobile';
+  onToggleViewMode?: () => void;
 }
 
-export default function Header({ title, onMenuClick }: HeaderProps) {
+export default function Header({ title, onMenuClick, viewMode = 'desktop', onToggleViewMode }: HeaderProps) {
   const { user, tenant, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -34,6 +36,34 @@ export default function Header({ title, onMenuClick }: HeaderProps) {
       </button>
 
       <h1 style={{ fontSize: '1.125rem', fontWeight: 700, flex: 1 }}>{title}</h1>
+
+      {onToggleViewMode && (
+        <button
+          onClick={onToggleViewMode}
+          title={viewMode === 'mobile' ? 'Modo desktop' : 'Modo celular'}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '6px 10px',
+            marginRight: 8,
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-md)',
+            background: viewMode === 'mobile' ? 'var(--color-accent-muted)' : 'transparent',
+            color: viewMode === 'mobile' ? 'var(--color-accent)' : 'var(--color-text-muted)',
+            fontSize: '0.75rem',
+            fontWeight: 600,
+            cursor: 'pointer',
+            transition: 'all 150ms',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {viewMode === 'mobile' ? <Monitor size={15} /> : <Smartphone size={15} />}
+          <span className="view-mode-label">
+            {viewMode === 'mobile' ? 'Modo desktop' : 'Modo celular'}
+          </span>
+        </button>
+      )}
 
       {user && (
         <div ref={menuRef} style={{ position: 'relative' }}>
@@ -133,6 +163,7 @@ export default function Header({ title, onMenuClick }: HeaderProps) {
         .mobile-menu-btn { display: none; }
         @media (max-width: 768px) {
           .mobile-menu-btn { display: flex; }
+          .view-mode-label { display: none; }
         }
       `}</style>
     </header>
