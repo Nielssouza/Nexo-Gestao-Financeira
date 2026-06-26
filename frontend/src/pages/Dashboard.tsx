@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useViewMode } from '../contexts/ViewModeContext';
+import { fetchInvestments } from '../api/investments';
+import ChartsModal from '../components/Dashboard/ChartsModal';
 import {
   ChevronLeft,
   ChevronRight,
   Wallet,
-  TrendingUp,
-  TrendingDown,
   CreditCard,
-  PiggyBank,
   FileText,
   Bell,
+  PiggyBank,
+  BarChart2,
 } from 'lucide-react';
 import { fetchDashboard, type DashboardData } from '../api/dashboard';
 import {
@@ -44,17 +46,27 @@ const CHART_COLORS = ['#7abf00', '#60a5fa', '#fbbf24', '#fb7185', '#34d399', '#a
 
 export default function Dashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const monthParam = searchParams.get('month') || getMonthParam(new Date());
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [bellOpen, setBellOpen] = useState(false);
+  const [chartsOpen, setChartsOpen] = useState(false);
   const { isMobile } = useViewMode();
   const cols2 = isMobile ? '1fr' : '1fr 1fr';
 
+  const { data: investments } = useQuery({
+    queryKey: ['investments'],
+    queryFn: fetchInvestments,
+  });
+
   useEffect(() => {
     setLoading(true);
+    setError(null);
     fetchDashboard(monthParam)
       .then(setData)
+      .catch((err) => setError(err?.response?.data?.detail || 'Erro ao carregar o dashboard.'))
       .finally(() => setLoading(false));
   }, [monthParam]);
 
@@ -62,7 +74,7 @@ export default function Dashboard() {
     setSearchParams({ month: shiftMonth(monthParam, delta) });
   };
 
-  if (loading || !data) {
+  if (loading) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
         <div className="skeleton" style={{ height: 40, width: 300 }} />
@@ -76,8 +88,17 @@ export default function Dashboard() {
     );
   }
 
-  const { kpis } = data;
-  const balance = parseFloat(kpis.monthly_balance);
+  if (error || !data) {
+    return (
+      <div className="empty-state">
+        <h3 className="empty-state-title">Erro ao carregar</h3>
+        <p className="empty-state-text">{error || 'Resposta inválida do servidor.'}</p>
+        <button className="btn btn-primary" style={{ marginTop: 'var(--space-md)' }} onClick={() => { setLoading(true); setError(null); fetchDashboard(monthParam).then(setData).catch((e) => setError(e?.response?.data?.detail || 'Erro.')).finally(() => setLoading(false)); }}>
+          Tentar novamente
+        </button>
+      </div>
+    );
+  }
 
   const expenseTrend = data.expense_trend.map((p) => ({
     label: p.label,
@@ -96,7 +117,7 @@ export default function Dashboard() {
       {/* Month Navigation */}
       <div className="page-header">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 1, gap: 'var(--space-sm)' }}>
             <button className="btn btn-ghost btn-icon" onClick={() => navigateMonth(-1)}>
               <ChevronLeft size={20} />
             </button>
@@ -106,6 +127,11 @@ export default function Dashboard() {
             </button>
           </div>
 
+          <div style={{ display: 'flex', gap: 4 }}>
+          {/* Gráficos */}
+          <button className="btn btn-ghost btn-icon" onClick={() => setChartsOpen(true)} title="Gráficos">
+            <BarChart2 size={20} />
+          </button>
           {/* Bell — Vencimentos */}
           <button
           className="btn btn-ghost btn-icon"
@@ -138,8 +164,11 @@ export default function Dashboard() {
             </span>
           )}
           </button>
+          </div>
         </div>
       </div>
+
+      {chartsOpen && <ChartsModal initialMonth={monthParam} onClose={() => setChartsOpen(false)} />}
 
       {/* Vencimentos panel */}
       {bellOpen && (
@@ -203,43 +232,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* KPI Cards */}
-      <div className="kpi-grid stagger" style={{ marginBottom: 'var(--space-xl)' }}>
-        <div className="kpi-card">
-          <div className="kpi-label"><Wallet size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} /> Saldo Total</div>
-          <div className={`kpi-value ${parseFloat(kpis.user_balance) >= 0 ? 'positive' : 'negative'}`}>
-            {formatCurrency(kpis.user_balance)}
-          </div>
-        </div>
-
-        <div className="kpi-card">
-          <div className="kpi-label"><TrendingUp size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} /> Receitas</div>
-          <div className="kpi-value positive">{formatCurrency(kpis.monthly_income)}</div>
-        </div>
-
-        <div className="kpi-card">
-          <div className="kpi-label"><TrendingDown size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} /> Despesas</div>
-          <div className="kpi-value negative">{formatCurrency(kpis.monthly_expense)}</div>
-        </div>
-
-        <div className="kpi-card">
-          <div className="kpi-label">Balanço do Mês</div>
-          <div className={`kpi-value ${balance >= 0 ? 'positive' : 'negative'}`}>
-            {formatCurrency(kpis.monthly_balance)}
-          </div>
-        </div>
-
-        <div className="kpi-card">
-          <div className="kpi-label"><CreditCard size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} /> Limite Disponível</div>
-          <div className="kpi-value accent">{formatCurrency(kpis.credit_available)}</div>
-        </div>
-
-        <div className="kpi-card">
-          <div className="kpi-label"><PiggyBank size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} /> Investimentos</div>
-          <div className="kpi-value accent">{formatCurrency(kpis.investments_total)}</div>
-        </div>
-      </div>
-
       {/* Pendências e alertas */}
       <div style={{ marginBottom: 'var(--space-xl)' }}>
         <h3 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 'var(--space-md)' }}>
@@ -299,6 +291,23 @@ export default function Dashboard() {
             <div className={`kpi-value ${parseFloat(data.alerts.balance_after_pending) >= 0 ? 'accent' : 'negative'}`}>
               {formatCurrency(data.alerts.balance_after_pending)}
             </div>
+          </div>
+
+          {/* Faturas emitidas */}
+          <div className="kpi-card" style={{ position: 'relative' }}>
+            {data.invoices.count > 0 && (
+              <span style={{ position: 'absolute', top: 10, right: 10, background: '#ef4444', color: '#fff', borderRadius: 999, fontSize: '0.65rem', fontWeight: 700, padding: '2px 7px', minWidth: 20, textAlign: 'center' }}>
+                {data.invoices.count}
+              </span>
+            )}
+            <div className="kpi-label"><FileText size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} /> Faturas emitidas</div>
+            <div className="kpi-value accent">{formatCurrency(data.invoices.total_gross)}</div>
+          </div>
+
+          {/* Total investido */}
+          <div className="kpi-card">
+            <div className="kpi-label"><PiggyBank size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} /> Total investido</div>
+            <div className="kpi-value accent">{formatCurrency(data.kpis.investments_total)}</div>
           </div>
         </div>
       </div>
@@ -436,19 +445,31 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {/* Invoices */}
+        {/* Investimentos */}
         <div className="card">
-          <h3 style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 'var(--space-md)' }}>
-            <FileText size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />
-            Faturas do Mês
-          </h3>
-          <div className="kpi-card" style={{ borderColor: 'transparent', padding: 'var(--space-md)' }}>
-            <div className="kpi-label">Total Faturado</div>
-            <div className="kpi-value accent">{formatCurrency(data.invoices.total_gross)}</div>
-            <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
-              {data.invoices.count} {data.invoices.count === 1 ? 'fatura' : 'faturas'}
-            </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-md)' }}>
+            <h3 style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-secondary)' }}>
+              <PiggyBank size={14} style={{ marginRight: 6, verticalAlign: 'middle' }} />
+              Investimentos
+            </h3>
+            <button className="btn-ghost btn-icon" onClick={() => navigate('/investments')} title="Ver investimentos">
+              <PiggyBank size={16} />
+            </button>
           </div>
+          {!investments?.length ? (
+            <div style={{ padding: 'var(--space-md) 0', textAlign: 'center' }}>
+              <p style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 4 }}>Nenhum investimento ativo</p>
+              <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: 'var(--space-md)' }}>Adicione um investimento para acompanhar no dashboard.</p>
+              <button className="btn btn-primary" style={{ fontSize: '0.8rem' }} onClick={() => navigate('/investments')}>Adicionar</button>
+            </div>
+          ) : (
+            investments.map((inv) => (
+              <div key={inv.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--color-border)', fontSize: '0.85rem' }}>
+                <span>{inv.name}</span>
+                <span style={{ fontWeight: 600, color: 'var(--color-accent)' }}>{formatCurrency(inv.net_invested)}</span>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>
