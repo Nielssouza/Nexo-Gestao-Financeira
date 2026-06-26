@@ -158,11 +158,6 @@ export default function Transactions() {
           <h1 className="txn-month-title">{selectedMonthLabel}</h1>
           <button className="txn-month-arrow" onClick={() => navigateMonth(1)} aria-label="Mês seguinte">&rsaquo;</button>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '-0.5rem', marginBottom: '0.75rem' }}>
-          <button className={`btn ${isMonthClosed ? 'btn-secondary' : 'btn-ghost'}`} onClick={() => closeMonthMutation.mutate()} disabled={closeMonthMutation.isPending}>
-            {isMonthClosed ? 'Reabrir mês' : 'Fechar mês'}
-          </button>
-        </div>
         {/* Balance */}
         <div id="statement-balance">
           <article className="txn-balance-card">
