@@ -103,7 +103,7 @@ export default function TransactionForm() {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['statement_summary'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      navigate('/transactions', { replace: true });
+      navigate('/transactions');
     } catch (err: any) {
       setError(err.response?.data?.message || err.message || 'Erro ao salvar transação');
     } finally {
@@ -259,7 +259,7 @@ export default function TransactionForm() {
 
         {/* Botões */}
         <div style={{ display: 'grid', gridTemplateColumns: cols2, gap: '0.75rem', paddingTop: '0.5rem' }}>
-          <button type="button" className="btn btn-secondary" onClick={() => navigate('/transactions', { replace: true })}>
+          <button type="button" className="btn btn-secondary" onClick={() => navigate(-1)}>
             Cancelar
           </button>
           <button type="submit" className="btn btn-primary" disabled={loading} onClick={handleSubmit}>
