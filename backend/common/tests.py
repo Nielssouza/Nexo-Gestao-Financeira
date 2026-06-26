@@ -325,7 +325,7 @@ class BalanceFunctionsTests(TestCase):
 
         self.assertEqual(available, Decimal("375.00"))
 
-    def test_user_balance_includes_cleared_card_account_balance(self):
+    def test_user_balance_excludes_card_account_balance(self):
         card = Account.objects.create(
             user=self.user,
             tenant=self.tenant,
@@ -346,4 +346,4 @@ class BalanceFunctionsTests(TestCase):
             tenant=self.tenant,
         )
 
-        self.assertEqual(total, Decimal("1118.32"))
+        self.assertEqual(total, Decimal("1200.00"))

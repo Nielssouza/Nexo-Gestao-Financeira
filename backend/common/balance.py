@@ -65,9 +65,11 @@ def calculate_account_balance(account, cutoff_date=None):
 def calculate_user_balance(user, cutoff_date, tenant=None):
     tenant = resolve_tenant(tenant=tenant, user=user)
     account_model = apps.get_model("accounts", "Account")
-    active_accounts = account_model.objects.filter(tenant=tenant, is_active=True).filter(
-        models.Q(include_in_balance=True, account_type__in=["bank", "cash"])
-        | models.Q(account_type="card")
+    active_accounts = account_model.objects.filter(
+        tenant=tenant,
+        is_active=True,
+        include_in_balance=True,
+        account_type__in=["bank", "cash"],
     )
     total_balance = ZERO
     for account in active_accounts:
