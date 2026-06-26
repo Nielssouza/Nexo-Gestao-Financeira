@@ -113,6 +113,8 @@ export default function Dashboard() {
   }));
 
   return (
+    <>
+    {chartsOpen && <ChartsModal initialMonth={monthParam} onClose={() => setChartsOpen(false)} />}
     <div className="animate-fade-in">
       {/* Month Navigation */}
       <div className="page-header">
@@ -167,8 +169,6 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
-
-      {chartsOpen && <ChartsModal initialMonth={monthParam} onClose={() => setChartsOpen(false)} />}
 
       {/* Vencimentos panel */}
       {bellOpen && (
@@ -238,6 +238,29 @@ export default function Dashboard() {
           Pendências e alertas
         </h3>
         <div className="kpi-grid">
+          {/* Receitas do mês */}
+          <div className="kpi-card">
+            <div className="kpi-label">Receitas do mês</div>
+            <div className="kpi-value positive">{formatCurrency(data.kpis.monthly_income)}</div>
+          </div>
+
+          {/* Despesas do mês */}
+          <div className="kpi-card">
+            <div className="kpi-label">Despesas do mês</div>
+            <div className="kpi-value negative">{formatCurrency(data.kpis.monthly_expense)}</div>
+          </div>
+
+          {/* Total cartão */}
+          <div className="kpi-card" style={{ position: 'relative' }}>
+            {data.alerts.credit_card_month_count > 0 && (
+              <span style={{ position: 'absolute', top: 10, right: 10, background: '#3b82f6', color: '#fff', borderRadius: 999, fontSize: '0.65rem', fontWeight: 700, padding: '2px 7px', minWidth: 20, textAlign: 'center' }}>
+                {data.alerts.credit_card_month_count}
+              </span>
+            )}
+            <div className="kpi-label">Total cartão</div>
+            <div className="kpi-value negative">{formatCurrency(data.alerts.credit_card_month_total)}</div>
+          </div>
+
           {/* Despesas pendentes */}
           <div className="kpi-card" style={{ position: 'relative' }}>
             {data.alerts.pending_expense_count > 0 && (
@@ -260,17 +283,6 @@ export default function Dashboard() {
             <div className="kpi-value negative">{formatCurrency(data.alerts.credit_card_open_total)}</div>
           </div>
 
-          {/* Total cartão */}
-          <div className="kpi-card" style={{ position: 'relative' }}>
-            {data.alerts.credit_card_month_count > 0 && (
-              <span style={{ position: 'absolute', top: 10, right: 10, background: '#3b82f6', color: '#fff', borderRadius: 999, fontSize: '0.65rem', fontWeight: 700, padding: '2px 7px', minWidth: 20, textAlign: 'center' }}>
-                {data.alerts.credit_card_month_count}
-              </span>
-            )}
-            <div className="kpi-label">Total cartão</div>
-            <div className="kpi-value negative">{formatCurrency(data.alerts.credit_card_month_total)}</div>
-          </div>
-
           {/* Limite do cartão */}
           <div className="kpi-card">
             <div className="kpi-label"><CreditCard size={14} style={{ marginRight: 4, verticalAlign: 'middle' }} /> Limite do cartão</div>
@@ -282,14 +294,6 @@ export default function Dashboard() {
             <div className="kpi-label">Balanço consolidado</div>
             <div className={`kpi-value ${parseFloat(data.alerts.consolidated_balance) >= 0 ? 'positive' : 'negative'}`}>
               {formatCurrency(data.alerts.consolidated_balance)}
-            </div>
-          </div>
-
-          {/* Disponível */}
-          <div className="kpi-card">
-            <div className="kpi-label">Disponível</div>
-            <div className={`kpi-value ${parseFloat(data.alerts.balance_after_pending) >= 0 ? 'accent' : 'negative'}`}>
-              {formatCurrency(data.alerts.balance_after_pending)}
             </div>
           </div>
 
@@ -473,5 +477,6 @@ export default function Dashboard() {
         </div>
       </div>
     </div>
+    </>
   );
 }

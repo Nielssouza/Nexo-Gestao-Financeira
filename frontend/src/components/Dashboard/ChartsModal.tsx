@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 import {
@@ -60,7 +61,7 @@ export default function ChartsModal({ initialMonth, onClose }: ChartsModalProps)
   const hasData = expenseTrend.some((p) => p.total > 0);
   const tooltipStyle = { background: 'var(--color-bg-elevated)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', color: 'var(--color-text-primary)', fontSize: '0.8rem' };
 
-  return (
+  return createPortal(
     <div className="modal-overlay" onClick={onClose}>
       <div
         className="modal-content"
@@ -217,6 +218,7 @@ export default function ChartsModal({ initialMonth, onClose }: ChartsModalProps)
           )
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
