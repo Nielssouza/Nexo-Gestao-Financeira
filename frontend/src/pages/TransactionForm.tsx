@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchTransactionById, createTransaction, updateTransaction, type CreateTransactionPayload } from '../api/transactions';
 import { fetchAccounts, type Account } from '../api/accounts';
@@ -103,7 +103,7 @@ export default function TransactionForm() {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['statement_summary'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      navigate('/transactions');
+      navigate('/transactions', { replace: true });
     } catch (err: any) {
       setError(err.response?.data?.message || err.message || 'Erro ao salvar transação');
     } finally {
@@ -259,9 +259,9 @@ export default function TransactionForm() {
 
         {/* Botões */}
         <div style={{ display: 'grid', gridTemplateColumns: cols2, gap: '0.75rem', paddingTop: '0.5rem' }}>
-          <Link to="/transactions" className="btn btn-secondary" style={{ textAlign: 'center', textDecoration: 'none' }}>
+          <button type="button" className="btn btn-secondary" onClick={() => navigate('/transactions', { replace: true })}>
             Cancelar
-          </Link>
+          </button>
           <button type="submit" className="btn btn-primary" disabled={loading} onClick={handleSubmit}>
             {loading ? 'Salvando...' : isEditing ? 'Salvar alterações' : 'Salvar'}
           </button>
