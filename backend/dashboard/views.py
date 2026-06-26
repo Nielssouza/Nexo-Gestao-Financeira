@@ -437,7 +437,8 @@ class DashboardContextMixin(LoginRequiredMixin):
             })
 
         total_balance = calculate_user_balance(user, balance_cutoff_date, tenant=tenant)
-        consolidated_balance = total_balance + net_invested
+        safe_credit = credit_card_limit if credit_card_limit is not None else Decimal("0.00")
+        consolidated_balance = monthly_balance + safe_credit
         balance_after_pending = consolidated_balance - pending_bank_total
 
         invoices_month_qs = Invoice.objects.filter(

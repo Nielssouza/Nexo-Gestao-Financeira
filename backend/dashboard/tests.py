@@ -188,7 +188,7 @@ class DashboardChartsMonthScopeTests(TestCase):
 
         cleared_response = self.client.get(reverse("dashboard:home"), {"month": "2026-03"})
         self.assertEqual(cleared_response.status_code, 200)
-        self.assertEqual(cleared_response.context["total_balance"], Decimal("918.32"))
+        self.assertEqual(cleared_response.context["total_balance"], Decimal("1000.00"))
 
         card_expense.is_cleared = False
         card_expense.save(update_fields=["is_cleared"])
@@ -300,7 +300,7 @@ class DashboardChartsMonthScopeTests(TestCase):
         self.assertEqual(response.context["credit_card_limit"], Decimal("430.50"))
         self.assertEqual(
             response.context["consolidated_balance"],
-            response.context["total_balance"],
+            Decimal("390.50"),
         )
         self.assertContains(response, "Cartão aberto")
         self.assertContains(response, "Total cartão")

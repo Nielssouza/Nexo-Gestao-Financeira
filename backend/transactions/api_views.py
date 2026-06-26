@@ -242,7 +242,7 @@ class TransactionViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
 
         credit_card_limit = calculate_credit_card_available_limit(tenant, selected_month)
         safe_credit_limit = credit_card_limit if credit_card_limit is not None else Decimal("0.00")
-        consolidated_balance = current_balance
+        consolidated_balance = monthly_balance + safe_credit_limit
 
         pending_base = Transaction.objects.filter(
             tenant=tenant,

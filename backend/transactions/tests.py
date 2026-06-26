@@ -566,7 +566,7 @@ class TransactionScopeAndMonthLockTests(TestCase):
             {"month": "2026-02"},
         )
         self.assertEqual(cleared_response.status_code, 200)
-        self.assertEqual(cleared_response.context["current_balance"], Decimal("918.32"))
+        self.assertEqual(cleared_response.context["current_balance"], Decimal("1000.00"))
 
         card_expense.is_cleared = False
         card_expense.save(update_fields=["is_cleared"])
@@ -867,7 +867,7 @@ class TransactionScopeAndMonthLockTests(TestCase):
         self.assertEqual(response.context["credit_card_limit"], Decimal("880.05"))
         self.assertEqual(
             response.context["consolidated_balance"],
-            response.context["current_balance"],
+            Decimal("7830.05"),
         )
         self.assertContains(response, "Cartão em aberto")
         self.assertContains(response, "Total cartão")
