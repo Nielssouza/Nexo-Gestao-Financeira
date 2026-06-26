@@ -155,13 +155,36 @@ class InvoiceSerializer(serializers.ModelSerializer):
     def get_service_code_description(self, obj):
         return dict(SERVICE_CODES).get(obj.service_code, "")
 
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        launch_financial = attrs.get("launch_financial", False)
+        expected_account = attrs.get("expected_account")
+        existing_account = getattr(self.instance, "expected_account", None)
+
+        if launch_financial and expected_account is None and existing_account is None:
+            raise serializers.ValidationError({
+                "expected_account": "Selecione a conta para lancar a fatura automaticamente no financeiro."
+            })
+
+        return attrs
+
 
 class InvoicePaySerializer(serializers.Serializer):
     """Serializer for the pay action."""
     paid_at = serializers.DateField()
     account = serializers.IntegerField(
+        required=False,
+        allow_null=True,
         help_text="ID da conta para registrar o pagamento."
     )
     launch_financial = serializers.BooleanField(
-        required=False, default=False, help_text="Se True, cria uma transação financeira de receita."
+        required=False, default=False
     )
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        if attrs.get("launch_financial") and not attrs.get("account"):
+            raise serializers.ValidationError({
+                "account": "Selecione a conta para registrar o recebimento."
+            })
+        return attrs

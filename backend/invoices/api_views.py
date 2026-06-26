@@ -6,9 +6,12 @@ from rest_framework.response import Response
 
 from accounts.models import Account
 from common.api_mixins import TenantQuerySetMixin
+from common.throttles import CnpjLookupThrottle, NfseEmitThrottle
 from invoices.models import Client, Invoice
 from invoices.serializers import ClientSerializer, InvoicePaySerializer, InvoiceSerializer
+from invoices.service_codes import SERVICE_CODES
 from invoices.views import _invoice_transaction_description, _sync_invoice_transaction
+from tenants.serializers import TenantSerializer
 
 
 class InvoiceViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
@@ -23,6 +26,9 @@ class InvoiceViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
     ordering_fields = ("number", "issue_date", "gross_value")
     ordering = ("-number",)
 
+    def _service_code_description(self, invoice):
+        return dict(SERVICE_CODES).get(invoice.service_code, "")
+
     def perform_create(self, serializer):
         tenant = self.get_tenant()
         launch_financial = serializer.validated_data.pop("launch_financial", False)
@@ -32,6 +38,7 @@ class InvoiceViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
             user=self.request.user,
             tenant=tenant,
             number=Invoice.next_number(tenant),
+            status=Invoice.ISSUED,
         )
 
         if save_client and invoice.client_document:
@@ -94,15 +101,17 @@ class InvoiceViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
         pay_serializer.is_valid(raise_exception=True)
 
         tenant = self.get_tenant()
-        account = Account.objects.filter(
-            tenant=tenant,
-            pk=pay_serializer.validated_data["account"],
-        ).first()
-        if not account:
-            return Response(
-                {"detail": "Conta não encontrada."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        account = None
+        if pay_serializer.validated_data.get("launch_financial", False):
+            account = Account.objects.filter(
+                tenant=tenant,
+                pk=pay_serializer.validated_data["account"],
+            ).first()
+            if not account:
+                return Response(
+                    {"detail": "Conta não encontrada."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
         if pay_serializer.validated_data.get("launch_financial", False):
             if invoice.transaction:
@@ -165,7 +174,7 @@ class InvoiceViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
 
         return Response(InvoiceSerializer(invoice).data)
 
-    @action(detail=True, methods=["post"])
+    @action(detail=True, methods=["post"], throttle_classes=[NfseEmitThrottle])
     def nfse_emit(self, request, pk=None):
         """Trigger NFSe emission (mirrors InvoiceNfseEmitView)."""
         from django.utils import timezone as tz
@@ -224,6 +233,51 @@ class InvoiceViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
             "nfse_requested_at": invoice.nfse_requested_at,
         })
 
+    @action(detail=True, methods=["get"])
+    def print_data(self, request, pk=None):
+        """Return all data needed to render/print an invoice in the SPA."""
+        invoice = self.get_object()
+        tenant = invoice.tenant or self.get_tenant()
+        return Response({
+            "invoice": InvoiceSerializer(invoice).data,
+            "tenant": TenantSerializer(tenant).data if tenant else None,
+            "service_code_description": self._service_code_description(invoice),
+        })
+
+    @action(detail=True, methods=["get"])
+    def nfse_guide(self, request, pk=None):
+        """Return structured data for the manual NFS-e emission guide."""
+        invoice = self.get_object()
+        service_code_description = self._service_code_description(invoice)
+        return Response({
+            "invoice": InvoiceSerializer(invoice).data,
+            "service_code_description": service_code_description,
+            "portal_url": "https://www.nfse.gov.br/EmissorNacional/Login",
+            "fields": {
+                "client": {
+                    "name": invoice.client_name,
+                    "document": invoice.client_document,
+                    "email": invoice.client_email,
+                    "address": invoice.client_address,
+                    "city": invoice.client_city,
+                },
+                "service": {
+                    "code": invoice.service_code,
+                    "code_description": service_code_description,
+                    "description": invoice.service_description,
+                    "competence": invoice.issue_date.strftime("%m/%Y"),
+                },
+                "values": {
+                    "gross_value": str(invoice.gross_value),
+                    "deductions": str(invoice.deductions),
+                    "calculation_base": str(invoice.calculation_base),
+                    "iss_rate": str(invoice.iss_rate),
+                    "iss_value": str(invoice.iss_value),
+                    "iss_withheld": invoice.iss_withheld,
+                },
+            },
+        })
+
 
 class ClientViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
     queryset = Client.objects.all()
@@ -270,7 +324,7 @@ class ClientViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
         client = self.get_object()
         return Response(ClientSerializer(client).data)
 
-    @action(detail=False, methods=["get"])
+    @action(detail=False, methods=["get"], throttle_classes=[CnpjLookupThrottle])
     def cnpj_lookup(self, request):
         """Consult BrasilAPI for CNPJ data (mirrors CnpjLookupView)."""
         import requests as req

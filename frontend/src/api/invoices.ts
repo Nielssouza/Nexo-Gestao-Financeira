@@ -1,4 +1,5 @@
 import api from './client';
+import type { TenantProfile } from './tenant';
 
 export interface Client {
   id: number;
@@ -45,13 +46,13 @@ export interface Invoice {
   inss_value: string;
   total_withheld: string;
   net_value: string;
-  recurrence_type: 'none' | 'monthly';
+  recurrence_type: 'once' | 'fixed' | 'monthly' | 'quarterly' | 'yearly' | 'installment';
   recurrence_interval: number;
-  recurrence_interval_unit: 'months';
+  recurrence_interval_unit: 'day' | 'month' | 'year';
   installment_count: number | null;
   expected_account: number | null;
   expected_account_name: string;
-  nfse_status: 'pending' | 'processing' | 'authorized' | 'error';
+  nfse_status: 'nfse_pending' | 'nfse_processing' | 'nfse_issued' | 'nfse_failed' | null;
   nfse_number: string | null;
   nfse_error: string | null;
   nfse_requested_at: string | null;
@@ -62,6 +63,29 @@ export interface Invoice {
 }
 
 export type CreateInvoicePayload = Partial<Invoice> & { launch_financial?: boolean; save_client?: boolean };
+
+export interface InvoicePrintData {
+  invoice: Invoice;
+  tenant: TenantProfile | null;
+  service_code_description: string;
+}
+
+export interface InvoiceNfseGuide {
+  invoice: Invoice;
+  service_code_description: string;
+  portal_url: string;
+  fields: {
+    client: Record<string, string>;
+    service: Record<string, string>;
+    values: Record<string, string | boolean>;
+  };
+}
+
+export interface InvoiceNfseStatus {
+  nfse_status: Invoice['nfse_status'];
+  nfse_error: string | null;
+  nfse_requested_at: string | null;
+}
 
 export async function fetchInvoices(): Promise<Invoice[]> {
   const { data } = await api.get<Invoice[]>('/invoices/');
@@ -87,7 +111,7 @@ export async function deleteInvoice(id: number): Promise<void> {
   await api.delete(`/invoices/${id}/`);
 }
 
-export async function payInvoice(id: number, payload: { paid_at: string; account: number }): Promise<Invoice> {
+export async function payInvoice(id: number, payload: { paid_at: string; account?: number | null; launch_financial?: boolean }): Promise<Invoice> {
   const { data } = await api.post<Invoice>(`/invoices/${id}/pay/`, payload);
   return data;
 }
@@ -99,5 +123,25 @@ export async function cancelInvoice(id: number): Promise<Invoice> {
 
 export async function fetchClients(): Promise<Client[]> {
   const { data } = await api.get<Client[]>('/clients/');
+  return data;
+}
+
+export async function fetchInvoicePrintData(id: number): Promise<InvoicePrintData> {
+  const { data } = await api.get<InvoicePrintData>(`/invoices/${id}/print_data/`);
+  return data;
+}
+
+export async function fetchInvoiceNfseGuide(id: number): Promise<InvoiceNfseGuide> {
+  const { data } = await api.get<InvoiceNfseGuide>(`/invoices/${id}/nfse_guide/`);
+  return data;
+}
+
+export async function emitInvoiceNfse(id: number): Promise<Invoice> {
+  const { data } = await api.post<Invoice>(`/invoices/${id}/nfse_emit/`);
+  return data;
+}
+
+export async function fetchInvoiceNfseStatus(id: number): Promise<InvoiceNfseStatus> {
+  const { data } = await api.get<InvoiceNfseStatus>(`/invoices/${id}/nfse_status/`);
   return data;
 }
