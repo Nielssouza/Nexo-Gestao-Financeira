@@ -165,6 +165,19 @@ class TransactionViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
             status=status.HTTP_200_OK,
         )
 
+    @action(detail=True, methods=["post"])
+    def toggle_ignored(self, request, pk=None):
+        """Toggle the is_ignored status of a transaction (mirrors TransactionToggleIgnoredView)."""
+        transaction = self.get_object()
+        transaction.is_ignored = not transaction.is_ignored
+        if transaction.is_ignored:
+            transaction.is_cleared = False
+        transaction.save(update_fields=["is_ignored", "is_cleared", "updated_at"])
+        return Response(
+            TransactionSerializer(transaction).data,
+            status=status.HTTP_200_OK,
+        )
+
     @action(detail=False, methods=["get"])
     def statement_summary(self, request):
         """Returns statement balances and totals for the selected month and filters."""

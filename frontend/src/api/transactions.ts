@@ -14,9 +14,9 @@ export interface Transaction {
   description: string;
   is_cleared: boolean;
   is_ignored: boolean;
-  recurrence_type: 'none' | 'recurring' | 'installment';
+  recurrence_type: 'once' | 'fixed' | 'monthly' | 'quarterly' | 'yearly' | 'installment';
   recurrence_interval: number;
-  recurrence_interval_unit: 'days' | 'weeks' | 'months' | 'years';
+  recurrence_interval_unit: 'day' | 'month' | 'year';
   installment_count: number | null;
   installment_number: number | null;
   display_title: string;

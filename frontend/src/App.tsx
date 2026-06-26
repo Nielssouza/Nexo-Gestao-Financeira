@@ -15,6 +15,7 @@ import Shopping from './pages/Shopping';
 import Investments from './pages/Investments';
 import Invoices from './pages/Invoices';
 
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {

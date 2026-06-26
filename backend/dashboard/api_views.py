@@ -1,6 +1,6 @@
 """Dashboard API — returns aggregated financial data for the selected month."""
 
-from datetime import date
+from datetime import timedelta
 from decimal import Decimal
 
 from django.db.models import Count, Sum
@@ -17,7 +17,7 @@ from common.balance import (
     calculate_user_balance,
 )
 from common.months import month_bounds, month_value_to_date, shift_month
-from investments.models import Investment
+from investments.models import InvestmentEntry
 from invoices.models import Invoice
 from transactions.models import Transaction
 
@@ -31,10 +31,7 @@ MONTH_NAMES_PT = {
 
 
 class DashboardView(APIView):
-    """GET /api/v1/dashboard/?month=YYYY-MM
-
-    Returns all dashboard KPIs and chart data for the selected month.
-    """
+    """GET /api/v1/dashboard/?month=YYYY-MM"""
 
     def get(self, request):
         tenant = getattr(request, "tenant", None) or get_user_tenant(request.user)
@@ -47,29 +44,30 @@ class DashboardView(APIView):
         else:
             selected_month = today.replace(day=1)
 
-        month_start, month_end = month_bounds(selected_month)
+        # month_bounds returns (first_day, first_day_of_next_month)
+        month_start, next_month_start = month_bounds(selected_month)
+        end_of_selected_month = next_month_start - timedelta(days=1)
 
-        # Monthly transactions
+        # Monthly transactions (matches views.py: date__lt=next_month_start)
         monthly_txns = Transaction.objects.filter(
             tenant=tenant,
             is_ignored=False,
             date__gte=month_start,
-            date__lte=month_end,
+            date__lt=next_month_start,
         )
 
+        # Income / Expense — no include_in_balance filter (matches views.py)
         income = monthly_txns.filter(
             transaction_type=Transaction.TransactionType.INCOME,
-            account__include_in_balance=True,
         ).aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
 
         expense = monthly_txns.filter(
             transaction_type=Transaction.TransactionType.EXPENSE,
-            account__include_in_balance=True,
         ).aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
 
-        # Balances
+        # Balances — cutoff = end_of_selected_month (matches views.py)
         user_balance = calculate_user_balance(
-            request.user, cutoff_date=today, tenant=tenant
+            request.user, cutoff_date=end_of_selected_month, tenant=tenant
         )
         monthly_balance = calculate_monthly_balance(
             request.user, selected_month, tenant=tenant
@@ -106,8 +104,7 @@ class DashboardView(APIView):
             account__account_type=Account.AccountType.CARD
         ).aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
 
-        # Investments net
-        from investments.models import Investment, InvestmentEntry
+        # Investments net (matches views.py: deposits - withdrawals)
         inv_entries = InvestmentEntry.objects.filter(tenant=tenant, investment__is_active=True)
         inv_deposited = inv_entries.filter(
             entry_type=InvestmentEntry.EntryType.DEPOSIT
@@ -141,7 +138,7 @@ class DashboardView(APIView):
             .order_by("-total")
         )
 
-        # Expense trend (last 6 months)
+        # Expense trend (last 6 months — matches views.py)
         expense_trend = []
         for offset in range(-5, 1):
             month_date = shift_month(selected_month, offset)
@@ -172,20 +169,17 @@ class DashboardView(APIView):
                 "include_in_balance": acct.include_in_balance,
             })
 
-        # Invoices summary
+        # Invoices summary — excludes CANCELLED (matches views.py)
         invoices_summary = Invoice.objects.filter(
             tenant=tenant,
-            issue_date__gte=month_start,
-            issue_date__lte=month_end,
-        ).aggregate(
+            issue_date__year=selected_month.year,
+            issue_date__month=selected_month.month,
+        ).exclude(status=Invoice.CANCELLED).aggregate(
             total_gross=Coalesce(Sum("gross_value"), ZERO),
             count=Count("id"),
         )
 
-        # Investments total
-        investments_total = ZERO
-        for inv in Investment.objects.filter(tenant=tenant, is_active=True):
-            investments_total += inv.net_invested
+        investments_total = net_invested
 
         # Due notifications (unpaid expenses in selected month)
         due_qs = Transaction.objects.filter(
@@ -194,7 +188,7 @@ class DashboardView(APIView):
             is_cleared=False,
             is_ignored=False,
             date__gte=month_start,
-            date__lte=month_end,
+            date__lt=next_month_start,
         ).select_related("account", "category").order_by("date", "created_at")
 
         due_count = due_qs.count()

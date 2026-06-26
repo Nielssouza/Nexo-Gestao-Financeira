@@ -4,7 +4,10 @@ import './index.css'
 import App from './App.tsx'
 
 if ('serviceWorker' in navigator) {
+  let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (reloading) return;
+    reloading = true;
     window.location.reload();
   });
 }
