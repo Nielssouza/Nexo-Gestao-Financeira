@@ -4,15 +4,12 @@ import { useSearchParams } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { 
-  fetchTransactions, 
+  fetchTransactions,
   fetchStatementSummary,
-  deleteTransaction, 
-  toggleTransactionCleared, 
+  deleteTransaction,
+  toggleTransactionCleared,
   toggleTransactionIgnored,
-  fetchClosedMonths,
-  createClosedMonth,
-  updateClosedMonth,
-  type Transaction 
+  type Transaction
 } from '../api/transactions';
 import { fetchAccounts } from '../api/accounts';
 import ClearTransactionModal from '../components/Transactions/ClearTransactionModal';
@@ -75,29 +72,6 @@ export default function Transactions() {
     queryFn: () => fetchStatementSummary({ month: monthParam }),
   });
 
-  const [yearNumber, monthNumber] = monthParam.split('-').map(Number);
-  const { data: closedMonths } = useQuery({
-    queryKey: ['closed-months', monthParam],
-    queryFn: () => fetchClosedMonths({ year: yearNumber, month: monthNumber }),
-  });
-  const closedMonth = closedMonths?.[0];
-  const isMonthClosed = !!closedMonth?.is_closed;
-
-  const closeMonthMutation = useMutation({
-    mutationFn: async () => {
-      if (closedMonth) {
-        return updateClosedMonth(closedMonth.id, { is_closed: !closedMonth.is_closed });
-      }
-      return createClosedMonth({ year: yearNumber, month: monthNumber, is_closed: true });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['closed-months'] });
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      queryClient.invalidateQueries({ queryKey: ['statement_summary'] });
-    },
-  });
-
-
   const deleteMutation = useMutation({
     mutationFn: deleteTransaction,
     onSuccess: () => {
@@ -106,6 +80,12 @@ export default function Transactions() {
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
+
+  const requestUnlockPassword = () => {
+    if (!isMonthClosed) return undefined;
+    const password = window.prompt('Mês fechado. Informe sua senha para confirmar esta alteração:');
+    return password || undefined;
+  };
 
   const toggleMutation = useMutation({
     mutationFn: toggleTransactionCleared,

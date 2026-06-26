@@ -5,16 +5,19 @@ interface ClearTransactionModalProps {
   transaction: Transaction | null;
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (id: number, date: string) => Promise<void>;
+  onConfirm: (id: number, date: string, unlockPassword?: string) => Promise<void>;
+  requireUnlockPassword?: boolean;
 }
 
-export default function ClearTransactionModal({ transaction, isOpen, onClose, onConfirm }: ClearTransactionModalProps) {
+export default function ClearTransactionModal({ transaction, isOpen, onClose, onConfirm, requireUnlockPassword = false }: ClearTransactionModalProps) {
   const [clearedDate, setClearedDate] = useState('');
+  const [unlockPassword, setUnlockPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (transaction) {
       setClearedDate(transaction.date || new Date().toISOString().split('T')[0]);
+      setUnlockPassword('');
     }
   }, [transaction]);
 
@@ -24,11 +27,11 @@ export default function ClearTransactionModal({ transaction, isOpen, onClose, on
     e.preventDefault();
     try {
       setLoading(true);
-      await onConfirm(transaction.id, clearedDate);
+      await onConfirm(transaction.id, clearedDate, unlockPassword || undefined);
       onClose();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('Erro ao baixar transação');
+      alert(err.response?.data?.detail || 'Erro ao baixar transação');
     } finally {
       setLoading(false);
     }
@@ -72,6 +75,20 @@ export default function ClearTransactionModal({ transaction, isOpen, onClose, on
             value={clearedDate}
             onChange={(e) => setClearedDate(e.target.value)}
           />
+
+          {requireUnlockPassword && (
+            <>
+              <label className="clear-modal-label" htmlFor={`modal-unlock-password-${transaction.id}`}>Senha para mês fechado</label>
+              <input
+                id={`modal-unlock-password-${transaction.id}`}
+                className="clear-modal-date"
+                type="password"
+                required
+                value={unlockPassword}
+                onChange={(e) => setUnlockPassword(e.target.value)}
+              />
+            </>
+          )}
 
           <button type="submit" className="clear-modal-submit" disabled={loading}>
             {loading ? 'Aguarde...' : 'Confirmar baixa'}

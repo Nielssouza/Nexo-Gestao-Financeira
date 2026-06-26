@@ -74,8 +74,8 @@ export async function updateTransaction(id: number, payload: Partial<CreateTrans
   return data;
 }
 
-export async function deleteTransaction(id: number): Promise<void> {
-  await api.delete(`/transactions/${id}/`);
+export async function deleteTransaction({ id, unlock_password, scope = 'current' }: { id: number; unlock_password?: string; scope?: 'current' | 'all' }): Promise<void> {
+  await api.delete(`/transactions/${id}/`, { data: { unlock_password, scope } });
 }
 
 export async function toggleTransactionCleared({ id, cleared_date, unlock_password }: { id: number, cleared_date?: string, unlock_password?: string }): Promise<Transaction> {

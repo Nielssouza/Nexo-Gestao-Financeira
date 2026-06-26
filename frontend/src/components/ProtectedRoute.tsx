@@ -2,8 +2,8 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import type { ReactNode } from 'react';
 
-export default function ProtectedRoute({ children }: { children: ReactNode }) {
-  const { isLoggedIn, isLoading } = useAuth();
+export default function ProtectedRoute({ children, requireSuperuser = false }: { children: ReactNode; requireSuperuser?: boolean }) {
+  const { isLoggedIn, isLoading, user } = useAuth();
 
   if (isLoading) {
     return (
@@ -15,6 +15,10 @@ export default function ProtectedRoute({ children }: { children: ReactNode }) {
 
   if (!isLoggedIn) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (requireSuperuser && !user?.is_superuser) {
+    return <Navigate to="/" replace />;
   }
 
   return <>{children}</>;

@@ -54,7 +54,7 @@ export default function App() {
               <Route path="shopping" element={<Shopping />} />
               <Route path="investments" element={<Investments />} />
               <Route path="settings/company" element={<CompanySettings />} />
-              <Route path="settings/users" element={<PendingUsers />} />
+              <Route path="settings/users" element={<ProtectedRoute requireSuperuser><PendingUsers /></ProtectedRoute>} />
             </Route>
           </Routes>
         </BrowserRouter>
