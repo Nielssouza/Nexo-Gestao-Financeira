@@ -79,13 +79,10 @@ export default function Transactions() {
       queryClient.invalidateQueries({ queryKey: ['statement_summary'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
+    onError: (err: any) => {
+      alert(err.response?.data?.detail || 'Erro ao excluir transação.');
+    },
   });
-
-  const requestUnlockPassword = () => {
-    if (!isMonthClosed) return undefined;
-    const password = window.prompt('Mês fechado. Informe sua senha para confirmar esta alteração:');
-    return password || undefined;
-  };
 
   const toggleMutation = useMutation({
     mutationFn: toggleTransactionCleared,
@@ -289,7 +286,10 @@ export default function Transactions() {
                                 <button type="button" className="txn-menu-item txn-menu-item-clear txn-menu-item-clear-active" onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
-                                  toggleMutation.mutate({ id: tx.id });
+                                  toggleMutation.mutate(
+                                    { id: tx.id, unlock_password: requestUnlockPassword() },
+                                    { onError: (err: any) => alert(err.response?.data?.detail || 'Erro ao atualizar transação.') }
+                                  );
                                   document.querySelectorAll('details').forEach(d => d.removeAttribute('open'));
                                 }}>
                                   Baixada
@@ -323,7 +323,7 @@ export default function Transactions() {
                                 e.stopPropagation();
                                 document.querySelectorAll('details').forEach(d => d.removeAttribute('open'));
                                 if (confirm('Tem certeza que deseja excluir esta transação?')) {
-                                  deleteMutation.mutate(tx.id);
+                                  deleteMutation.mutate({ id: tx.id });
                                 }
                               }}>Excluir</button>
                             </div>
@@ -343,8 +343,9 @@ export default function Transactions() {
         isOpen={!!clearingTx}
         onClose={() => setClearingTx(null)}
         transaction={clearingTx}
-        onConfirm={async (id, date) => {
-          await toggleMutation.mutateAsync({ id, cleared_date: date });
+        requireUnlockPassword={isMonthClosed}
+        onConfirm={async (id, date, unlockPassword) => {
+          await toggleMutation.mutateAsync({ id, cleared_date: date, unlock_password: unlockPassword });
         }}
       />
     </div>

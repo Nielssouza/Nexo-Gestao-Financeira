@@ -78,7 +78,7 @@ class UserAuthFlowTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertFormError(response.context["form"], "username", "Informe um endereço de email válido.")
+        self.assertFormError(response.context["form"], "username", "Insira um endereço de email válido.")
         self.assertNotIn("_auth_user_id", self.client.session)
 
     def test_login_throttles_repeated_failed_attempts(self):
