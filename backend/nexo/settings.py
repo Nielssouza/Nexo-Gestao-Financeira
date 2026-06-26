@@ -90,6 +90,7 @@ INSTALLED_APPS = [
     # Third-party
     "rest_framework",
     "rest_framework_simplejwt",
+    "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
     "django_filters",
     # Local apps
@@ -325,6 +326,13 @@ REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": [
         "rest_framework.renderers.JSONRenderer",
     ],
+    "DEFAULT_THROTTLE_CLASSES": [],
+    "DEFAULT_THROTTLE_RATES": {
+        "login": "10/min",
+        "cnpj_lookup": "60/hour",
+        "nfse_emit": "10/hour",
+        "cep_lookup": "60/hour",
+    },
 }
 
 SIMPLE_JWT = {
