@@ -107,8 +107,6 @@ export default function Dashboard() {
     isCurrent: p.is_current,
   }));
 
-  const expenseTrend = combinedTrend;
-
   const expenseCategories = data.expense_by_category.map((c, i) => ({
     name: c.name,
     value: parseFloat(c.total),
@@ -335,7 +333,7 @@ export default function Dashboard() {
                 <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: 'var(--color-text-muted)', fontSize: 11 }} />
                 <YAxis hide domain={[0, 'dataMax']} />
                 <Tooltip
-                  formatter={(val: any, name: string) => [formatCurrency(val), name === 'expense' ? 'Despesas' : 'Receitas']}
+                  formatter={(val: any, name) => [formatCurrency(val), name === 'expense' ? 'Despesas' : 'Receitas']}
                   contentStyle={{ background: 'var(--color-bg-elevated)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', color: 'var(--color-text-primary)', fontSize: '0.8rem' }}
                 />
                 <Bar dataKey="income" radius={[4, 4, 0, 0]} minPointSize={2}>
