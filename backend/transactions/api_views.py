@@ -75,9 +75,8 @@ class TransactionViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
         scope = serializer.validated_data.pop("scope", "current")
         
         old_instance = self.get_object()
-        new_date = serializer.validated_data.get("date", old_instance.date)
 
-        if not self._check_month_lock(old_instance.date, unlock_password) or not self._check_month_lock(new_date, unlock_password):
+        if not self._check_month_lock(old_instance.date, unlock_password):
             from rest_framework.exceptions import ValidationError
             raise ValidationError({"detail": "Mês fechado: informe sua senha para confirmar esta alteração."})
 
@@ -243,7 +242,7 @@ class TransactionViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
 
         credit_card_limit = calculate_credit_card_available_limit(tenant, selected_month)
         safe_credit_limit = credit_card_limit if credit_card_limit is not None else Decimal("0.00")
-        consolidated_balance = monthly_balance + safe_credit_limit
+        consolidated_balance = current_balance
 
         pending_base = Transaction.objects.filter(
             tenant=tenant,

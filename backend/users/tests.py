@@ -5,6 +5,7 @@ from django.core.cache import cache
 from django.test import TestCase
 from django.test.utils import override_settings
 from django.urls import reverse
+from rest_framework.test import APIClient
 
 from users.forms import StyledAuthenticationForm
 
@@ -378,3 +379,63 @@ class ApproveUserViewTests(TestCase):
         response = self.client.get(self._approve_url(self.pending_user.pk))
 
         self.assertEqual(response.status_code, 405)
+
+
+class UserApiTests(TestCase):
+    def setUp(self):
+        User = get_user_model()
+        self.superuser = User.objects.create_superuser(
+            username="api-superadmin",
+            email="api-superadmin@example.com",
+            password="Strong-pass-123",
+        )
+        self.regular_user = User.objects.create_user(
+            username="api-regular",
+            email="api-regular@example.com",
+            password="Strong-pass-123",
+        )
+        self.pending_user = User.objects.create_user(
+            username="api-pending",
+            email="api-pending@example.com",
+            password="Strong-pass-123",
+            is_active=False,
+        )
+
+    def test_me_api_returns_user_superuser_flag_and_tenant(self):
+        client = APIClient()
+        client.force_authenticate(self.superuser)
+
+        response = client.get("/api/v1/me/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data["user"]["is_superuser"])
+        self.assertEqual(response.data["tenant"]["id"], self.superuser.tenant_memberships.get().tenant.pk)
+
+    def test_pending_users_api_requires_superuser(self):
+        client = APIClient()
+        client.force_authenticate(self.regular_user)
+
+        response = client.get("/api/v1/users/pending/")
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_superuser_can_list_pending_users_api(self):
+        client = APIClient()
+        client.force_authenticate(self.superuser)
+
+        response = client.get("/api/v1/users/pending/")
+
+        self.assertEqual(response.status_code, 200)
+        emails = {item["email"] for item in response.data["results"]}
+        self.assertEqual(emails, {self.pending_user.email})
+
+    def test_superuser_can_approve_pending_user_api(self):
+        client = APIClient()
+        client.force_authenticate(self.superuser)
+
+        response = client.post(f"/api/v1/users/{self.pending_user.pk}/approve/")
+
+        self.assertEqual(response.status_code, 200)
+        self.pending_user.refresh_from_db()
+        self.assertTrue(self.pending_user.is_active)
+        self.assertEqual(response.data["email"], self.pending_user.email)

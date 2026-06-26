@@ -4,9 +4,10 @@ from unittest.mock import MagicMock, patch
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
+from rest_framework.test import APIClient
 
 from accounts.models import Account
-from tenants.models import Tenant, TenantMembership
+from tenants.models import NfseCredential, Tenant, TenantMembership
 
 
 class TenantIsolationTests(TestCase):
@@ -159,6 +160,7 @@ class TenantViewsTest(TestCase):
                 "city": "Sao Paulo",
                 "state": "sp",
                 "postal_code": "01001-000",
+                "default_interface": Tenant.InterfaceChoices.CLASSIC,
             },
         )
         self.assertEqual(response.status_code, 302)
@@ -188,3 +190,93 @@ class TenantViewsTest(TestCase):
             self.tenant.full_address,
             "Rua Teste, 123, Sala 4, Centro | Sao Paulo - SP | CEP 01001-000",
         )
+
+
+class TenantApiTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username="tenant-api-user",
+            password="123",
+        )
+        self.tenant = self.user.tenant_memberships.get().tenant
+        self.client = APIClient()
+        self.client.force_authenticate(self.user)
+
+    def test_tenant_profile_api_updates_current_tenant(self):
+        response = self.client.patch(
+            "/api/v1/tenant/",
+            {
+                "name": "Empresa API",
+                "document": "12.345.678/0001-99",
+                "email": "contato@empresa.test",
+                "address": "Rua API",
+                "address_number": "42",
+                "city": "Goiania",
+                "state": "GO",
+                "postal_code": "74000-000",
+                "default_interface": Tenant.InterfaceChoices.REACT,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.tenant.refresh_from_db()
+        self.assertEqual(self.tenant.name, "Empresa API")
+        self.assertEqual(self.tenant.default_interface, Tenant.InterfaceChoices.REACT)
+        self.assertEqual(self.tenant.state, "GO")
+
+    @patch("tenants.api_views.urlopen")
+    def test_cep_lookup_api_returns_address_data(self, mock_urlopen):
+        payload = (
+            b'{"logradouro":"Rua API","bairro":"Centro","localidade":"Goiania",'
+            b'"uf":"GO","cep":"74000-000","complemento":"Sala 2"}'
+        )
+        mock_response = MagicMock()
+        mock_response.read.return_value = payload
+        mock_urlopen.return_value.__enter__.return_value = mock_response
+
+        response = self.client.get("/api/v1/cep/74000000/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["address"], "Rua API")
+        self.assertEqual(response.data["city"], "Goiania")
+        self.assertEqual(response.data["state"], "GO")
+
+    def test_cep_lookup_api_rejects_invalid_cep(self):
+        response = self.client.get("/api/v1/cep/123/")
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_nfse_credential_api_encrypts_and_hides_password(self):
+        response = self.client.post(
+            "/api/v1/nfse-credentials/",
+            {"gov_br_cpf": "12345678901", "gov_br_password": "senha-secreta"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertNotIn("gov_br_password", response.data)
+        self.assertNotIn("gov_br_password_enc", response.data)
+        self.assertTrue(response.data["has_password"])
+        credential = NfseCredential.objects.get(tenant=self.tenant)
+        self.assertNotEqual(credential.gov_br_password_enc, "senha-secreta")
+
+    def test_nfse_credential_api_updates_without_replacing_password_when_blank(self):
+        create_response = self.client.post(
+            "/api/v1/nfse-credentials/",
+            {"gov_br_cpf": "12345678901", "gov_br_password": "senha-secreta"},
+            format="json",
+        )
+        credential = NfseCredential.objects.get(tenant=self.tenant)
+        encrypted = credential.gov_br_password_enc
+
+        update_response = self.client.patch(
+            f"/api/v1/nfse-credentials/{create_response.data['id']}/",
+            {"gov_br_cpf": "10987654321", "gov_br_password": ""},
+            format="json",
+        )
+
+        self.assertEqual(update_response.status_code, 200)
+        credential.refresh_from_db()
+        self.assertEqual(credential.gov_br_cpf, "10987654321")
+        self.assertEqual(credential.gov_br_password_enc, encrypted)

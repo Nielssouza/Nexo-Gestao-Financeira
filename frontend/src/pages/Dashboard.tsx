@@ -147,27 +147,27 @@ export default function Dashboard() {
 
         {/* Saldo */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: 'var(--space-md) 0', width: '100%' }}>
-          <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-accent)', marginBottom: 4 }}>
+          <div style={{ fontSize: isMobile ? '0.75rem' : '0.9rem', fontWeight: 600, color: 'var(--color-accent)', marginBottom: 4 }}>
             Saldo atual em contas
           </div>
-          <div style={{ fontSize: '2.2rem', fontWeight: 700, color: parseFloat(data.kpis.user_balance) >= 0 ? 'var(--color-text-primary)' : 'var(--color-danger)' }}>
+          <div style={{ fontSize: isMobile ? '2.2rem' : '2.8rem', fontWeight: 700, color: parseFloat(data.kpis.user_balance) >= 0 ? 'var(--color-text-primary)' : 'var(--color-danger)' }}>
             {formatCurrency(data.kpis.user_balance)}
           </div>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginTop: 'var(--space-md)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: isMobile ? '100%' : 'auto', gap: isMobile ? 0 : 'var(--space-xl)', marginTop: 'var(--space-md)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(34,197,94,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width={16} height={16}><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
             </div>
             <div>
-              <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-accent)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Receitas</div>
-              <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#22c55e' }}>{formatCurrency(data.kpis.monthly_income)}</div>
+              <div style={{ fontSize: isMobile ? '0.7rem' : '0.75rem', fontWeight: 700, color: 'var(--color-accent)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Receitas</div>
+              <div style={{ fontSize: isMobile ? '0.95rem' : '1.5rem', fontWeight: 700, color: '#22c55e' }}>{formatCurrency(data.kpis.monthly_income)}</div>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div>
-              <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-accent)', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right' }}>Despesas</div>
-              <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--color-danger)', textAlign: 'right' }}>{formatCurrency(data.kpis.monthly_expense)}</div>
+              <div style={{ fontSize: isMobile ? '0.7rem' : '0.75rem', fontWeight: 700, color: 'var(--color-accent)', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right' }}>Despesas</div>
+              <div style={{ fontSize: isMobile ? '0.95rem' : '1.5rem', fontWeight: 700, color: 'var(--color-danger)', textAlign: 'right' }}>{formatCurrency(data.kpis.monthly_expense)}</div>
             </div>
             <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(239,68,68,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width={16} height={16}><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>

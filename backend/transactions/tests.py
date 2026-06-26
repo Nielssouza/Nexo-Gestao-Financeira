@@ -5,6 +5,7 @@ from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
+from rest_framework.test import APIClient
 
 from accounts.models import Account
 from categories.models import Category
@@ -1054,6 +1055,228 @@ class TransactionScopeAndMonthLockTests(TestCase):
                 description="Extra",
             ).exists()
         )
+
+
+class TransactionApiTests(TestCase):
+    def setUp(self):
+        user_model = get_user_model()
+        self.user = user_model.objects.create_user(
+            username="transaction-api-user",
+            password="scope-pass-123",
+        )
+        self.other_user = user_model.objects.create_user(
+            username="transaction-api-other",
+            password="scope-pass-123",
+        )
+        self.tenant = self.user.tenant_memberships.get().tenant
+        self.account = Account.objects.create(
+            user=self.user,
+            tenant=self.tenant,
+            name="Banco API",
+            account_type=Account.AccountType.BANK,
+            initial_balance=Decimal("1000.00"),
+            is_active=True,
+        )
+        self.card_account = Account.objects.create(
+            user=self.user,
+            tenant=self.tenant,
+            name="Cartao API",
+            account_type=Account.AccountType.CARD,
+            initial_balance=Decimal("0.00"),
+            credit_limit=Decimal("500.00"),
+            include_in_balance=False,
+            is_active=True,
+        )
+        self.category = Category.objects.create(
+            user=self.user,
+            tenant=self.tenant,
+            name="Receita API",
+            category_type=Category.CategoryType.INCOME,
+        )
+        self.expense_category = Category.objects.create(
+            user=self.user,
+            tenant=self.tenant,
+            name="Despesa API",
+            category_type=Category.CategoryType.EXPENSE,
+        )
+        self.transaction = Transaction.objects.create(
+            user=self.user,
+            tenant=self.tenant,
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            amount=Decimal("120.00"),
+            date=date(2026, 6, 10),
+            account=self.account,
+            category=self.expense_category,
+            description="Despesa API",
+            recurrence_type=Transaction.RecurrenceType.ONCE,
+            is_cleared=False,
+        )
+        self.other_transaction = Transaction.objects.create(
+            user=self.other_user,
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            amount=Decimal("999.00"),
+            date=date(2026, 6, 10),
+            account=Account.objects.create(
+                user=self.other_user,
+                name="Banco Outro API",
+                account_type=Account.AccountType.BANK,
+            ),
+            description="Outra Despesa API",
+            recurrence_type=Transaction.RecurrenceType.ONCE,
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(self.user)
+
+    def _transaction_payload(self, **overrides):
+        payload = {
+            "transaction_type": Transaction.TransactionType.INCOME,
+            "amount": "250.00",
+            "date": "2026-06-15",
+            "account": self.account.pk,
+            "category": self.category.pk,
+            "description": "Receita nova API",
+            "is_cleared": False,
+            "is_ignored": False,
+            "recurrence_type": Transaction.RecurrenceType.ONCE,
+            "recurrence_interval": 1,
+            "recurrence_interval_unit": Transaction.IntervalUnit.MONTH,
+        }
+        payload.update(overrides)
+        return payload
+
+    def test_transaction_api_list_is_limited_to_current_tenant(self):
+        response = self.client.get("/api/v1/transactions/")
+
+        self.assertEqual(response.status_code, 200)
+        ids = {item["id"] for item in response.data["results"]}
+        self.assertEqual(ids, {self.transaction.pk})
+
+    def test_transaction_api_create_assigns_user_and_tenant(self):
+        response = self.client.post(
+            "/api/v1/transactions/",
+            self._transaction_payload(),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        transaction = Transaction.objects.get(description="Receita nova API")
+        self.assertEqual(transaction.user, self.user)
+        self.assertEqual(transaction.tenant, self.tenant)
+
+    def test_transaction_api_blocks_closed_month_without_password(self):
+        ClosedMonth.objects.create(
+            user=self.user,
+            tenant=self.tenant,
+            year=2026,
+            month=6,
+            is_closed=True,
+        )
+
+        response = self.client.post(
+            "/api/v1/transactions/",
+            self._transaction_payload(description="Bloqueada API"),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(Transaction.objects.filter(description="Bloqueada API").exists())
+
+    def test_transaction_api_allows_closed_month_with_password(self):
+        ClosedMonth.objects.create(
+            user=self.user,
+            tenant=self.tenant,
+            year=2026,
+            month=6,
+            is_closed=True,
+        )
+
+        response = self.client.post(
+            "/api/v1/transactions/",
+            self._transaction_payload(
+                description="Desbloqueada API",
+                unlock_password="scope-pass-123",
+            ),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(Transaction.objects.filter(description="Desbloqueada API").exists())
+
+    def test_transaction_api_toggle_cleared_sets_date_and_unignores(self):
+        self.transaction.is_ignored = True
+        self.transaction.save(update_fields=["is_ignored"])
+
+        response = self.client.post(
+            f"/api/v1/transactions/{self.transaction.pk}/toggle_cleared/",
+            {"cleared_date": "2026-06-18"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.transaction.refresh_from_db()
+        self.assertTrue(self.transaction.is_cleared)
+        self.assertFalse(self.transaction.is_ignored)
+        self.assertEqual(self.transaction.date, date(2026, 6, 18))
+
+    def test_transaction_api_toggle_ignored_clears_transaction(self):
+        self.transaction.is_cleared = True
+        self.transaction.save(update_fields=["is_cleared"])
+
+        response = self.client.post(
+            f"/api/v1/transactions/{self.transaction.pk}/toggle_ignored/",
+            {},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.transaction.refresh_from_db()
+        self.assertTrue(self.transaction.is_ignored)
+        self.assertFalse(self.transaction.is_cleared)
+
+    def test_closed_month_api_create_assigns_user_and_tenant(self):
+        response = self.client.post(
+            "/api/v1/closed-months/",
+            {"year": 2026, "month": 7, "is_closed": True},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        closed_month = ClosedMonth.objects.get(year=2026, month=7)
+        self.assertEqual(closed_month.user, self.user)
+        self.assertEqual(closed_month.tenant, self.tenant)
+
+    def test_statement_summary_api_returns_month_totals(self):
+        Transaction.objects.create(
+            user=self.user,
+            tenant=self.tenant,
+            transaction_type=Transaction.TransactionType.INCOME,
+            amount=Decimal("500.00"),
+            date=date(2026, 6, 5),
+            account=self.account,
+            category=self.category,
+            description="Receita resumo API",
+            recurrence_type=Transaction.RecurrenceType.ONCE,
+            is_cleared=True,
+        )
+        Transaction.objects.create(
+            user=self.user,
+            tenant=self.tenant,
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            amount=Decimal("100.00"),
+            date=date(2026, 6, 12),
+            account=self.card_account,
+            category=self.expense_category,
+            description="Cartao resumo API",
+            recurrence_type=Transaction.RecurrenceType.ONCE,
+            is_cleared=False,
+        )
+
+        response = self.client.get("/api/v1/transactions/statement_summary/?month=2026-06")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["monthly_income_total"], "500")
+        self.assertEqual(response.data["monthly_expense_total"], "220")
+        self.assertEqual(response.data["credit_card_month_total"], "100")
 
 
 

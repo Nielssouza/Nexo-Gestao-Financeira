@@ -121,7 +121,7 @@ class DashboardView(APIView):
         net_invested = inv_deposited - inv_withdrawn
 
         safe_credit = credit_available if credit_available is not None else ZERO
-        consolidated_balance = user_balance + safe_credit + net_invested
+        consolidated_balance = user_balance + net_invested
         balance_after_pending = consolidated_balance - pending_bank_total
 
         # Category breakdown (expenses)

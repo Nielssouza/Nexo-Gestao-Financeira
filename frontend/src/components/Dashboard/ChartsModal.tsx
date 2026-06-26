@@ -124,15 +124,15 @@ export default function ChartsModal({ initialMonth, onClose }: ChartsModalProps)
               Sem despesas no mês selecionado.
             </p>
           ) : (
-            <div style={{ display: 'flex', gap: 'var(--space-lg)', alignItems: 'center', flexWrap: 'wrap' }}>
-              <ResponsiveContainer width={200} height={200}>
-                <PieChart>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-lg)' }}>
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <PieChart width={200} height={200}>
                   <Pie data={expenseCategories} cx="50%" cy="50%" innerRadius={55} outerRadius={85} dataKey="value" stroke="none">
                     {expenseCategories.map((e, i) => <Cell key={i} fill={e.fill} />)}
                   </Pie>
                 </PieChart>
-              </ResponsiveContainer>
-              <div style={{ flex: 1, minWidth: 180 }}>
+              </div>
+              <div>
                 {expenseCategories.map((cat, i) => (
                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: '1px solid var(--color-border)', fontSize: '0.83rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

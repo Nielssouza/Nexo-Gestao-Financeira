@@ -4,6 +4,7 @@ from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
+from rest_framework.test import APIClient
 
 from shopping.models import ShoppingItem, ShoppingList
 
@@ -218,3 +219,110 @@ class ShoppingViewsTests(TestCase):
         item = ShoppingItem.objects.get(title="Leite")
         self.assertEqual(item.user, self.user)
         self.assertEqual(item.tenant, self.shopping_list.tenant)
+
+
+class ShoppingApiTests(TestCase):
+    def setUp(self):
+        user_model = get_user_model()
+        self.user = user_model.objects.create_user(
+            username="shopping-api-user",
+            password="pass-12345",
+        )
+        self.other_user = user_model.objects.create_user(
+            username="shopping-api-other",
+            password="pass-12345",
+        )
+        self.tenant = self.user.tenant_memberships.get().tenant
+        self.shopping_list = ShoppingList.objects.create(
+            user=self.user,
+            tenant=self.tenant,
+            name="Mercado API",
+            list_date=date(2026, 6, 20),
+        )
+        self.item = ShoppingItem.objects.create(
+            user=self.user,
+            tenant=self.tenant,
+            shopping_list=self.shopping_list,
+            title="Cafe API",
+            quantity=2,
+            unit_price=Decimal("10.00"),
+        )
+        self.other_list = ShoppingList.objects.create(
+            user=self.other_user,
+            name="Outro Mercado API",
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(self.user)
+
+    def test_shopping_list_api_update_changes_current_tenant_list(self):
+        response = self.client.patch(
+            f"/api/v1/shopping-lists/{self.shopping_list.pk}/",
+            {"name": "Mercado Atualizado", "notes": "Semanal"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.shopping_list.refresh_from_db()
+        self.assertEqual(self.shopping_list.name, "Mercado Atualizado")
+        self.assertEqual(self.shopping_list.notes, "Semanal")
+
+    def test_shopping_item_api_create_assigns_user_and_tenant(self):
+        response = self.client.post(
+            "/api/v1/shopping-items/",
+            {
+                "shopping_list": self.shopping_list.pk,
+                "title": "Leite API",
+                "quantity": 3,
+                "unit_price": "4.50",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        item = ShoppingItem.objects.get(title="Leite API")
+        self.assertEqual(item.user, self.user)
+        self.assertEqual(item.tenant, self.tenant)
+
+    def test_shopping_item_api_toggle_purchased(self):
+        response = self.client.post(
+            f"/api/v1/shopping-items/{self.item.pk}/toggle_purchased/",
+            {},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.item.refresh_from_db()
+        self.assertTrue(self.item.is_purchased)
+        self.assertIsNotNone(self.item.purchased_at)
+
+    def test_shopping_api_rejects_item_from_other_tenant(self):
+        response = self.client.get(f"/api/v1/shopping-lists/{self.other_list.pk}/")
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_shopping_summary_counts_current_tenant_only(self):
+        ShoppingItem.objects.create(
+            user=self.user,
+            tenant=self.tenant,
+            shopping_list=self.shopping_list,
+            title="Arroz API",
+            quantity=1,
+            unit_price=Decimal("15.00"),
+            is_purchased=True,
+        )
+        ShoppingItem.objects.create(
+            user=self.other_user,
+            shopping_list=self.other_list,
+            title="Outro Item API",
+            quantity=1,
+            unit_price=Decimal("99.00"),
+            is_purchased=True,
+        )
+
+        response = self.client.get("/api/v1/shopping-lists/summary/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["total_lists"], 1)
+        self.assertEqual(response.data["pending_count"], 1)
+        self.assertEqual(response.data["purchased_count"], 1)
+        self.assertEqual(response.data["purchased_total"], "15")

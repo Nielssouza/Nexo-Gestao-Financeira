@@ -1,5 +1,7 @@
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
 from common.api_mixins import TenantQuerySetMixin
@@ -26,6 +28,12 @@ class InvestmentViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user, tenant=self.get_tenant())
 
+    def _save_entry(self, serializer):
+        try:
+            return serializer.save(user=self.request.user, tenant=self.get_tenant())
+        except DjangoValidationError as exc:
+            raise ValidationError(exc.message_dict) from exc
+
     @action(detail=True, methods=["post"])
     def add_entry(self, request, pk=None):
         """Add an InvestmentEntry inline (mirrors InvestmentDetailView.post)."""
@@ -33,7 +41,7 @@ class InvestmentViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
         data = {**request.data, "investment": investment.pk}
         serializer = InvestmentEntrySerializer(data=data)
         serializer.is_valid(raise_exception=True)
-        entry = serializer.save(user=request.user, tenant=self.get_tenant())
+        entry = self._save_entry(serializer)
         return Response(
             InvestmentEntrySerializer(entry).data,
             status=status.HTTP_201_CREATED,
@@ -48,4 +56,7 @@ class InvestmentEntryViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
     ordering = ("-date", "-created_at")
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user, tenant=self.get_tenant())
+        try:
+            serializer.save(user=self.request.user, tenant=self.get_tenant())
+        except DjangoValidationError as exc:
+            raise ValidationError(exc.message_dict) from exc

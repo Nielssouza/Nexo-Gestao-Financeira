@@ -1013,6 +1013,12 @@ a:hover {
   color: var(--color-text-muted);
 }
 
+/* Utility classes (Tailwind-like, used in JSX) */
+.flex-1 { flex: 1 1 0%; }
+.min-w-0 { min-width: 0; }
+.space-y-4 > * + * { margin-top: 1rem; }
+.space-y-5 > * + * { margin-top: 1.25rem; }
+
 /* TRANSACTIONS CSS FROM DJANGO */
 .txn-desktop-new-btn {
   display: none;

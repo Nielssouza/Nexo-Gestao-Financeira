@@ -457,8 +457,7 @@ class StatementViewBase(LoginRequiredMixin, TemplateView):
         context["credit_card_open_total"] = credit_card_open_total
         context["credit_card_month_total"] = credit_card_month_total
         context["credit_card_limit"] = credit_card_limit
-        safe_credit_limit = credit_card_limit if credit_card_limit is not None else Decimal("0.00")
-        consolidated_balance = monthly_balance + safe_credit_limit
+        consolidated_balance = current_balance
         context["consolidated_balance"] = consolidated_balance
 
         pending_base = Transaction.objects.filter(

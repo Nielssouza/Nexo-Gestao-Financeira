@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from django.apps import apps
+from django.db import models
 from django.db.models import Sum
 from django.db.models.functions import Coalesce
 from django.utils import timezone
@@ -64,8 +65,9 @@ def calculate_account_balance(account, cutoff_date=None):
 def calculate_user_balance(user, cutoff_date, tenant=None):
     tenant = resolve_tenant(tenant=tenant, user=user)
     account_model = apps.get_model("accounts", "Account")
-    active_accounts = tracked_accounts(
-        account_model.objects.filter(tenant=tenant, is_active=True)
+    active_accounts = account_model.objects.filter(tenant=tenant, is_active=True).filter(
+        models.Q(include_in_balance=True, account_type__in=["bank", "cash"])
+        | models.Q(account_type="card")
     )
     total_balance = ZERO
     for account in active_accounts:
@@ -77,10 +79,7 @@ def calculate_credit_card_available_limit(tenant, selected_month):
     account_model = apps.get_model("accounts", "Account")
     monthly_limit_model = apps.get_model("accounts", "CardMonthlyLimit")
     transaction_model = apps.get_model("transactions", "Transaction")
-
-    today = timezone.localdate()
-    current_month = today.replace(day=1)
-    is_current_month = selected_month == current_month
+    is_current_month = True
 
     active_cards = account_model.objects.filter(
         tenant=tenant,
@@ -106,10 +105,18 @@ def calculate_credit_card_available_limit(tenant, selected_month):
         elif card.credit_limit is not None and card.credit_limit > 0:
             card_limit = card.credit_limit
         else:
-            balance = calculate_account_balance(card)
-            if balance > 0:
-                total_available += balance
-            continue
+            monthly_income = transaction_model.objects.filter(
+                tenant=tenant,
+                account=card,
+                is_cleared=True,
+                is_ignored=False,
+                date__year=selected_month.year,
+                date__month=selected_month.month,
+                transaction_type=Transaction.TransactionType.INCOME,
+            ).aggregate(total=Coalesce(Sum("amount"), ZERO))["total"]
+            card_limit = card.initial_balance + monthly_income
+            if card_limit <= 0:
+                continue
 
         monthly_expenses = transaction_model.objects.filter(
             tenant=tenant,

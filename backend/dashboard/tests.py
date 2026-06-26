@@ -4,6 +4,7 @@ from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
+from rest_framework.test import APIClient
 
 from accounts.models import Account
 from categories.models import Category
@@ -417,4 +418,71 @@ class DashboardPublicLandingTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "dashboard/home.html")
         self.assertNotContains(response, "Financeiro pessoal, sem planilha")
+
+
+class DashboardApiTests(TestCase):
+    def setUp(self):
+        user_model = get_user_model()
+        self.user = user_model.objects.create_user(
+            username="dashboard-api-user",
+            password="secret123",
+        )
+        self.tenant = self.user.tenant_memberships.get().tenant
+        self.account = Account.objects.create(
+            user=self.user,
+            tenant=self.tenant,
+            name="Conta API",
+            account_type=Account.AccountType.BANK,
+            initial_balance=Decimal("1000.00"),
+        )
+        self.income_category = Category.objects.create(
+            user=self.user,
+            tenant=self.tenant,
+            name="Receitas API",
+            category_type=Category.CategoryType.INCOME,
+        )
+        self.expense_category = Category.objects.create(
+            user=self.user,
+            tenant=self.tenant,
+            name="Despesas API",
+            category_type=Category.CategoryType.EXPENSE,
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(self.user)
+
+    def test_dashboard_api_returns_selected_month_contract(self):
+        Transaction.objects.create(
+            user=self.user,
+            tenant=self.tenant,
+            transaction_type=Transaction.TransactionType.INCOME,
+            amount=Decimal("2500.00"),
+            date=date(2026, 6, 5),
+            account=self.account,
+            category=self.income_category,
+            recurrence_type=Transaction.RecurrenceType.ONCE,
+            is_cleared=True,
+        )
+        Transaction.objects.create(
+            user=self.user,
+            tenant=self.tenant,
+            transaction_type=Transaction.TransactionType.EXPENSE,
+            amount=Decimal("300.00"),
+            date=date(2026, 6, 10),
+            account=self.account,
+            category=self.expense_category,
+            description="Despesa pendente API",
+            recurrence_type=Transaction.RecurrenceType.ONCE,
+            is_cleared=False,
+        )
+
+        response = self.client.get("/api/v1/dashboard/?month=2026-06")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["selected_month"], "2026-06-01")
+        self.assertEqual(response.data["month_label"], "Junho 2026")
+        self.assertEqual(response.data["kpis"]["monthly_income"], "2500")
+        self.assertEqual(response.data["kpis"]["monthly_expense"], "300")
+        self.assertEqual(response.data["alerts"]["pending_expense_count"], 1)
+        self.assertEqual(response.data["due_notifications"]["count"], 1)
+        self.assertEqual(response.data["due_notifications"]["items"][0]["description"], "Despesa pendente API")
 
