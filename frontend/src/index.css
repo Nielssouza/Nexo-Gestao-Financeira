@@ -1106,6 +1106,9 @@ a:hover {
   font-weight: 700;
   white-space: nowrap;
   letter-spacing: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .txn-balance-value-negative {
@@ -1209,6 +1212,9 @@ a:hover {
   font-weight: 700;
   line-height: 1.1;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .txn-month-total-income {
@@ -1251,6 +1257,7 @@ a:hover {
   border: 1px solid rgba(100, 116, 139, 0.45);
   background: rgba(15, 23, 42, 0.55);
   padding: 0.65rem 1rem;
+  min-width: 0;
 }
 
 .txn-search-icon {
@@ -1266,6 +1273,9 @@ a:hover {
   background: transparent;
   color: #f8fafc;
   font-size: clamp(1.05rem, 4.3vw, 1.8rem);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .txn-search-input:focus {
