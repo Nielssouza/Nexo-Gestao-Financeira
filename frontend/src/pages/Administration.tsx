@@ -199,8 +199,11 @@ function DashboardTab({
                   }}
                 >
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '0.88rem', fontWeight: 600 }}>
-                      {c.sequence_number} — {c.name}
+                    <div style={{ fontSize: '0.88rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <span>{c.sequence_number} — {c.name}</span>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 500, background: 'var(--color-bg-elevated)', padding: '0.1rem 0.4rem', borderRadius: '4px', border: '1px solid var(--color-border)' }}>
+                        Tenant: {c.tenant}
+                      </span>
                     </div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
                       {formatDoc(c.document)}
