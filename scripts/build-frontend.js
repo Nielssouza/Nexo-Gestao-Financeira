@@ -7,6 +7,7 @@ const frontendDir = path.join(rootDir, 'frontend');
 const indexPath = path.join(frontendDir, 'dist', 'index.html');
 const prune = process.argv.includes('--prune');
 const cleanInstall = process.argv.includes('--ci');
+const ifMissing = process.argv.includes('--if-missing');
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
@@ -43,6 +44,11 @@ function removeNodeModules() {
   if (fs.existsSync(nodeModulesPath)) {
     fs.rmSync(nodeModulesPath, { recursive: true, force: true });
   }
+}
+
+if (ifMissing && fs.existsSync(indexPath)) {
+  console.log(`[build] React build already exists at ${indexPath}`);
+  process.exit(0);
 }
 
 runNpm([cleanInstall ? 'ci' : 'install', '--include=dev'], { cwd: frontendDir });

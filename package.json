@@ -4,7 +4,8 @@
   "scripts": {
     "build": "node scripts/build-frontend.js",
     "dev": "node scripts/dev.js",
-    "heroku-postbuild": "node scripts/build-frontend.js --ci --prune"
+    "postinstall": "node scripts/build-frontend.js --ci --if-missing",
+    "heroku-postbuild": "node scripts/build-frontend.js --ci"
   },
   "engines": {
     "node": "24.x",
