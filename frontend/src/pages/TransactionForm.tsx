@@ -161,7 +161,7 @@ export default function TransactionForm() {
         </div>
 
         {/* Valor + Data */}
-        <div style={{ display: 'grid', gridTemplateColumns: cols2, gap: '0.75rem' }}>
+        <div className="form-amount-date-grid" style={{ gap: '0.75rem' }}>
           <div>
             <label className="label">Valor (R$)</label>
             <input
@@ -258,7 +258,7 @@ export default function TransactionForm() {
         )}
 
         {/* Botões */}
-        <div style={{ display: 'grid', gridTemplateColumns: cols2, gap: '0.75rem', paddingTop: '0.5rem' }}>
+        <div className="form-amount-date-grid" style={{ gap: '0.75rem', paddingTop: '0.5rem' }}>
           <button type="button" className="btn btn-secondary" onClick={() => navigate(-1)}>
             Cancelar
           </button>
