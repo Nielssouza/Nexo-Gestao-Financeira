@@ -13,7 +13,12 @@ User = get_user_model()
 class ClientModelTest(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="testuser", password="123")
-        self.tenant = Tenant.objects.create(name="Test Tenant", owner=self.user)
+        self.tenant = Tenant.objects.create(
+            name="Test Tenant",
+            slug="test-tenant",
+            owner=self.user,
+            document="12345678901",
+        )
         self.client = Client.objects.create(
             user=self.user,
             tenant=self.tenant,
@@ -29,7 +34,12 @@ class ClientModelTest(TestCase):
 class InvoiceModelTest(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="testuser2", password="123")
-        self.tenant = Tenant.objects.create(name="Test Tenant 2", owner=self.user)
+        self.tenant = Tenant.objects.create(
+            name="Test Tenant 2",
+            slug="test-tenant-2",
+            owner=self.user,
+            document="12345678902",
+        )
         self.invoice = Invoice.objects.create(
             user=self.user,
             tenant=self.tenant,

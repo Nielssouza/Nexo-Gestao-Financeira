@@ -67,6 +67,14 @@ class Invoice(models.Model):
         null=True,
         blank=True,
     )
+    issuer_company = models.ForeignKey(
+        "tenants.TenantCompany",
+        on_delete=models.SET_NULL,
+        related_name="invoices",
+        null=True,
+        blank=True,
+        verbose_name="Empresa emissora",
+    )
     number = models.PositiveIntegerField("Número")
     status = models.CharField(
         "Status", max_length=20, choices=STATUS_CHOICES, default=DRAFT

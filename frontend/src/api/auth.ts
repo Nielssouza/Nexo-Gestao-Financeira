@@ -32,6 +32,9 @@ export interface Tenant {
   id: number;
   name: string;
   slug: string;
+  person_type: 'pf' | 'pj';
+  person_type_display: string;
+  role: 'owner' | 'admin' | 'member' | null;
 }
 
 export interface MeResponse {

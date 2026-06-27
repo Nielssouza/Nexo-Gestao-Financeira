@@ -15,7 +15,7 @@ import TransactionForm from './pages/TransactionForm';
 import Shopping from './pages/Shopping';
 import Investments from './pages/Investments';
 import Invoices from './pages/Invoices';
-import PendingUsers from './pages/PendingUsers';
+import Administration from './pages/Administration';
 
 
 const queryClient = new QueryClient({
@@ -56,7 +56,7 @@ export default function App() {
               <Route path="shopping" element={<Shopping />} />
               <Route path="investments" element={<Investments />} />
               <Route path="settings/company" element={<CompanySettings />} />
-              <Route path="settings/users" element={<ProtectedRoute requireSuperuser><PendingUsers /></ProtectedRoute>} />
+              <Route path="admin" element={<Administration />} />
             </Route>
           </Routes>
         </BrowserRouter>

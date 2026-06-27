@@ -1,16 +1,55 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Building2, KeyRound, MapPin, Save } from 'lucide-react';
-import { createNfseCredential, fetchNfseCredentials, fetchTenantProfile, lookupCep, updateNfseCredential, updateTenantProfile } from '../api/tenant';
-import { useAuth } from '../contexts/AuthContext';
+import { Building2, KeyRound, MapPin, Plus, Save } from 'lucide-react';
+import {
+  createNfseCredential,
+  createTenantCompany,
+  fetchNfseCredentials,
+  fetchTenantCompanies,
+  fetchTenantProfile,
+  lookupCep,
+  updateNfseCredential,
+  updateTenantProfile,
+} from '../api/tenant';
 import { useViewMode } from '../contexts/ViewModeContext';
+
+function formatWorkspaceId(documentValue?: string) {
+  const value = (documentValue || '').trim();
+  const digits = value.replace(/\D/g, '');
+
+  if (digits.length === 14) {
+    return digits.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+  }
+
+  if (digits.length === 11) {
+    return digits.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
+  }
+
+  return value;
+}
+
+function workspaceIdLabel(documentValue?: string) {
+  const digits = (documentValue || '').replace(/\D/g, '');
+  if (digits.length === 14) return 'CNPJ';
+  if (digits.length === 11) return 'CPF';
+  return 'ID';
+}
+
+function formatTenantCreatedAt(value?: string) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}${month}${day}`;
+}
 
 export default function CompanySettings() {
   const { isMobile } = useViewMode();
   const cols2 = isMobile ? '1fr' : '1fr 1fr';
   const cols21 = isMobile ? '1fr' : '2fr 1fr';
   const cols211 = isMobile ? '1fr' : '2fr 1fr 1fr';
-  const { tenant } = useAuth();
   const queryClient = useQueryClient();
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
@@ -26,6 +65,13 @@ export default function CompanySettings() {
     queryFn: fetchNfseCredentials,
   });
   const nfseCredential = nfseCredentials?.[0];
+
+  const { data: tenantCompanies = [] } = useQuery({
+    queryKey: ['tenantCompanies'],
+    queryFn: fetchTenantCompanies,
+  });
+  const companyLimit = 5;
+  const companyLimitReached = tenantCompanies.length >= companyLimit;
 
   const updateMutation = useMutation({
     mutationFn: updateTenantProfile,
@@ -51,6 +97,24 @@ export default function CompanySettings() {
       setTimeout(() => setSuccessMsg(''), 3000);
     },
     onError: () => setErrorMsg('Erro ao salvar credenciais NFS-e.'),
+  });
+
+  const companyMutation = useMutation({
+    mutationFn: createTenantCompany,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tenantCompanies'] });
+      setSuccessMsg('Empresa adicionada ao tenant com sucesso!');
+      setTimeout(() => setSuccessMsg(''), 3000);
+    },
+    onError: (error: any) => {
+      const data = error?.response?.data || {};
+      setErrorMsg(
+        data.detail ||
+        data.document?.[0] ||
+        data.sequence_number?.[0] ||
+        'Erro ao adicionar empresa. Verifique a sequencia e tente novamente.'
+      );
+    },
   });
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -99,6 +163,31 @@ export default function CompanySettings() {
     e.currentTarget.reset();
   };
 
+  const handleCompanySubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setSuccessMsg('');
+    setErrorMsg('');
+
+    if (companyLimitReached) {
+      setErrorMsg('Este tenant permite no maximo 5 cadastros de CPF/CNPJ.');
+      return;
+    }
+
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+    const payload = {
+      sequence_number: String(formData.get('sequence_number') || '').trim(),
+      name: String(formData.get('name') || '').trim(),
+      document: String(formData.get('document') || '').trim(),
+      email: String(formData.get('email') || '').trim(),
+      is_default: formData.get('is_default') === 'on',
+      is_active: true,
+    };
+
+    await companyMutation.mutateAsync(payload);
+    form.reset();
+  };
+
   if (isLoading) {
     return (
       <div className="animate-fade-in">
@@ -131,7 +220,10 @@ export default function CompanySettings() {
           <div>
             <h3 style={{ fontSize: '1.25rem', fontWeight: 600 }}>{profile?.name}</h3>
             <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.875rem' }}>
-              ID: {tenant?.slug}
+              {workspaceIdLabel(profile?.document)}: {formatWorkspaceId(profile?.document) || 'Não informado'}
+            </p>
+            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', marginTop: 2 }}>
+              Tenant: {formatTenantCreatedAt(profile?.created_at) || 'Nao informado'}
             </p>
           </div>
         </div>
@@ -231,6 +323,92 @@ export default function CompanySettings() {
             >
               <Save size={18} />
               {updateMutation.isPending ? 'Salvando...' : 'Salvar Alterações'}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div className="card" style={{ maxWidth: 800, marginTop: 'var(--space-lg)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>
+          <Building2 size={22} style={{ color: 'var(--color-accent)' }} />
+          <div>
+            <h3 style={{ fontSize: '1rem', fontWeight: 600 }}>Empresas do tenant</h3>
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem' }}>
+              Cadastre ate 5 empresas ou PFs dentro do mesmo tenant. Uso atual: {tenantCompanies.length}/{companyLimit}.
+            </p>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gap: 'var(--space-sm)', marginBottom: 'var(--space-lg)' }}>
+          {tenantCompanies.length === 0 ? (
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem' }}>Nenhuma empresa cadastrada.</p>
+          ) : tenantCompanies.map((company) => (
+            <div
+              key={company.id}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: isMobile ? '1fr' : '90px 1fr auto',
+                gap: 'var(--space-sm)',
+                alignItems: 'center',
+                padding: '12px',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--radius-md)',
+                background: 'var(--color-bg-elevated)',
+              }}
+            >
+              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', fontWeight: 600 }}>
+                Seq. {company.sequence_number}
+              </span>
+              <div>
+                <strong style={{ display: 'block', fontSize: '0.9rem' }}>{company.name}</strong>
+                <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.8rem' }}>
+                  {workspaceIdLabel(company.document)}: {formatWorkspaceId(company.document) || 'Nao informado'}
+                </span>
+              </div>
+              {company.is_default && (
+                <span style={{ color: 'var(--color-success)', fontSize: '0.75rem', fontWeight: 600 }}>Padrao</span>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {companyLimitReached && (
+          <div style={{ background: 'var(--color-warning-muted)', color: 'var(--color-warning)', padding: '10px 14px', borderRadius: 'var(--radius-md)', fontSize: '0.85rem', marginBottom: 'var(--space-md)' }}>
+            Limite de 5 cadastros de CPF/CNPJ atingido para este tenant.
+          </div>
+        )}
+
+        <form onSubmit={handleCompanySubmit}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '120px 1fr 1fr', gap: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
+            <div>
+              <label className="label">Sequencia</label>
+              <input type="text" name="sequence_number" className="input" inputMode="numeric" pattern="[0-9]+" required disabled={companyLimitReached} />
+            </div>
+            <div>
+              <label className="label">Nome</label>
+              <input type="text" name="name" className="input" required disabled={companyLimitReached} />
+            </div>
+            <div>
+              <label className="label">CNPJ / CPF</label>
+              <input type="text" name="document" className="input" disabled={companyLimitReached} />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: cols2, gap: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
+            <div>
+              <label className="label">E-mail</label>
+              <input type="email" name="email" className="input" disabled={companyLimitReached} />
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, alignSelf: 'end', minHeight: 44 }}>
+              <input type="checkbox" name="is_default" disabled={companyLimitReached} />
+              <span style={{ fontSize: '0.85rem' }}>Definir como emissor padrao</span>
+            </label>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <button type="submit" className="btn btn-primary" disabled={companyLimitReached || companyMutation.isPending}>
+              <Plus size={18} />
+              {companyMutation.isPending ? 'Adicionando...' : 'Adicionar Empresa'}
             </button>
           </div>
         </form>

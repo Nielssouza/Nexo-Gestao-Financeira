@@ -2,6 +2,7 @@ from rest_framework import serializers
 
 from invoices.models import Client, Invoice
 from invoices.service_codes import SERVICE_CODES
+from tenants.models import TenantMembership
 
 
 class ClientSerializer(serializers.ModelSerializer):
@@ -64,6 +65,9 @@ class InvoiceSerializer(serializers.ModelSerializer):
     expected_account_name = serializers.CharField(
         source="expected_account.name", read_only=True, default=""
     )
+    issuer_company_name = serializers.CharField(
+        source="issuer_company.name", read_only=True, default=""
+    )
     service_code_description = serializers.SerializerMethodField()
 
     class Meta:
@@ -72,6 +76,8 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "id",
             "number",
             "number_display",
+            "issuer_company",
+            "issuer_company_name",
             "status",
             "issue_date",
             "due_date",
@@ -133,6 +139,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "id",
             "number",
             "number_display",
+            "issuer_company_name",
             "calculation_base",
             "iss_value",
             "pis_value",
@@ -159,12 +166,41 @@ class InvoiceSerializer(serializers.ModelSerializer):
         attrs = super().validate(attrs)
         launch_financial = attrs.get("launch_financial", False)
         expected_account = attrs.get("expected_account")
+        issuer_company = attrs.get("issuer_company")
         existing_account = getattr(self.instance, "expected_account", None)
+        existing_issuer_company = getattr(self.instance, "issuer_company", None)
+        tenant = self.context.get("tenant")
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
 
         if launch_financial and expected_account is None and existing_account is None:
             raise serializers.ValidationError({
                 "expected_account": "Selecione a conta para lancar a fatura automaticamente no financeiro."
             })
+
+        selected_issuer_company = issuer_company or existing_issuer_company
+        if selected_issuer_company and tenant and selected_issuer_company.tenant_id != tenant.pk:
+            raise serializers.ValidationError({
+                "issuer_company": "Empresa emissora invalida para este tenant."
+            })
+
+        if selected_issuer_company and tenant and user and not user.is_superuser:
+            membership = (
+                TenantMembership.objects
+                .filter(user=user, tenant=tenant)
+                .prefetch_related("company_accesses")
+                .first()
+            )
+            is_admin = bool(
+                membership and membership.role in (TenantMembership.Role.OWNER, TenantMembership.Role.ADMIN)
+            )
+            has_access = bool(
+                membership and membership.company_accesses.filter(company=selected_issuer_company).exists()
+            )
+            if not is_admin and not has_access:
+                raise serializers.ValidationError({
+                    "issuer_company": "Usuario sem acesso a esta empresa emissora."
+                })
 
         return attrs
 

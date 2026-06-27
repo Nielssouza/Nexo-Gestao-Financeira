@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
-import { Menu, Building2, LogOut } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { Menu, Building2, ChevronDown, LogOut } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
+import { fetchTenantCompanies } from '../../api/tenant';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface HeaderProps {
@@ -12,7 +14,26 @@ interface HeaderProps {
 export default function Header({ title, onMenuClick, isMobile = false }: HeaderProps) {
   const { user, tenant, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [tenantMenuOpen, setTenantMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const tenantMenuRef = useRef<HTMLDivElement>(null);
+  const tenantLabel = tenant?.person_type === 'pf' ? 'Pessoa' : 'Empresa';
+  const tenantTitle = tenant?.name ? `${tenantLabel}: ${tenant.name}` : `${tenantLabel} atual`;
+  const { data: tenantCompanies = [] } = useQuery({
+    queryKey: ['tenantCompanies'],
+    queryFn: fetchTenantCompanies,
+    enabled: Boolean(user),
+  });
+  const userDisplayName = user
+    ? [user.first_name, user.last_name].filter(Boolean).join(' ') || user.email || user.username
+    : '';
+
+  function formatDocument(value?: string) {
+    const digits = (value || '').replace(/\D/g, '');
+    if (digits.length === 14) return digits.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+    if (digits.length === 11) return digits.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
+    return value || '';
+  }
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -23,6 +44,16 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
     if (menuOpen) document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [menuOpen]);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (tenantMenuRef.current && !tenantMenuRef.current.contains(e.target as Node)) {
+        setTenantMenuOpen(false);
+      }
+    }
+    if (tenantMenuOpen) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [tenantMenuOpen]);
 
   return (
     <header className="app-header">
@@ -36,8 +67,50 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
         </button>
       )}
 
-      <h1 style={{ fontSize: '1.125rem', fontWeight: 700, flex: 1 }}>{title}</h1>
+      <h1 style={{ fontSize: '1.125rem', fontWeight: 700, flex: 1, minWidth: 0 }}>{title}</h1>
 
+      {user && (
+        <div ref={tenantMenuRef} style={{ position: 'relative', marginRight: '0.75rem' }}>
+          <button
+            type="button"
+            className="tenant-indicator"
+            title={tenantTitle}
+            onClick={() => setTenantMenuOpen((v) => !v)}
+          >
+            <Building2 size={15} className="tenant-indicator-icon" />
+            <span className="tenant-indicator-label">{tenantLabel}</span>
+            <span className="tenant-indicator-name">{tenant?.name || 'Sem empresa'}</span>
+            <ChevronDown size={14} className="tenant-indicator-icon" />
+          </button>
+
+          {tenantMenuOpen && (
+            <div className="tenant-dropdown">
+              <div className="tenant-dropdown-title">Empresas do tenant</div>
+              {tenantCompanies.length === 0 ? (
+                <div className="tenant-dropdown-empty">Nenhuma empresa disponivel.</div>
+              ) : tenantCompanies.map((company) => (
+                <div key={company.id} className="tenant-dropdown-item">
+                  <div className="tenant-dropdown-main">
+                    <span className="tenant-dropdown-seq">{company.sequence_number}</span>
+                    <span className="tenant-dropdown-name">{company.name}</span>
+                    {company.is_default && <span className="tenant-dropdown-badge">Padrao</span>}
+                  </div>
+                  <div className="tenant-dropdown-doc">
+                    {formatDocument(company.document) || 'CPF/CNPJ nao informado'}
+                  </div>
+                </div>
+              ))}
+              <NavLink
+                to="/settings/company"
+                className="tenant-dropdown-link"
+                onClick={() => setTenantMenuOpen(false)}
+              >
+                Gerenciar empresas
+              </NavLink>
+            </div>
+          )}
+        </div>
+      )}
 
       {user && (
         <div ref={menuRef} style={{ position: 'relative' }}>
@@ -83,30 +156,44 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
                 textTransform: 'uppercase',
                 color: 'var(--color-text-secondary)',
               }}>
-                Empresa
+                {tenantLabel}
               </div>
 
-              <NavLink
-                to="/settings/company"
-                onClick={() => setMenuOpen(false)}
-                style={({ isActive }) => ({
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.55rem',
-                  padding: '0.62rem 0.72rem',
+              <div style={{
+                padding: '0.62rem 0.72rem',
+                borderBottom: '1px solid var(--color-border)',
+              }}>
+                <div style={{
+                  fontSize: '0.7rem',
+                  fontWeight: 700,
+                  letterSpacing: '0.05em',
+                  textTransform: 'uppercase',
+                  color: 'var(--color-text-muted)',
+                  marginBottom: '0.22rem',
+                }}>
+                  Usuário
+                </div>
+                <div style={{
                   fontSize: '0.82rem',
                   lineHeight: 1.25,
-                  color: isActive ? 'var(--color-accent)' : 'var(--color-text-primary)',
-                  background: isActive ? 'var(--color-accent-muted)' : 'transparent',
-                  textDecoration: 'none',
-                  transition: 'background 0.15s',
-                })}
-              >
-                <Building2 size={15} />
-                <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{tenant?.name || 'Configurações'}</span>
-              </NavLink>
-
-              <div style={{ height: '1px', background: 'var(--color-border)', margin: '0.25rem 0' }} />
+                  fontWeight: 700,
+                  color: 'var(--color-text-primary)',
+                  overflowWrap: 'anywhere',
+                }}>
+                  {userDisplayName}
+                </div>
+                {user.email && user.email !== userDisplayName && (
+                  <div style={{
+                    marginTop: '0.12rem',
+                    fontSize: '0.72rem',
+                    lineHeight: 1.2,
+                    color: 'var(--color-text-muted)',
+                    overflowWrap: 'anywhere',
+                  }}>
+                    {user.email}
+                  </div>
+                )}
+              </div>
 
               <button
                 onClick={() => { setMenuOpen(false); logout(); }}
@@ -138,9 +225,142 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
 
       <style>{`
         .mobile-menu-btn { display: none; }
+        .tenant-indicator {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.45rem;
+          max-width: min(360px, 42vw);
+          min-width: 0;
+          height: 32px;
+          padding: 0 0.65rem;
+          margin-right: 0.75rem;
+          border: 1px solid var(--color-border);
+          border-radius: var(--radius-full);
+          background: rgba(255,255,255,0.035);
+          color: var(--color-text-primary);
+          text-decoration: none;
+          font-size: 0.78rem;
+          line-height: 1;
+          cursor: pointer;
+        }
+        button.tenant-indicator {
+          font-family: inherit;
+        }
+        .tenant-indicator-icon {
+          flex: 0 0 auto;
+          color: var(--color-text-secondary);
+        }
+        .tenant-indicator-label {
+          flex: 0 0 auto;
+          color: var(--color-text-muted);
+          font-size: 0.68rem;
+          font-weight: 700;
+          text-transform: uppercase;
+        }
+        .tenant-indicator-name {
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          font-weight: 700;
+        }
+        .tenant-dropdown {
+          position: absolute;
+          top: calc(100% + 0.5rem);
+          right: 0;
+          width: min(320px, calc(100vw - 1.5rem));
+          max-height: min(360px, calc(100vh - 5rem));
+          overflow-y: auto;
+          background: var(--color-bg-card);
+          border: 1px solid var(--color-border-hover);
+          border-radius: var(--radius-lg);
+          box-shadow: 0 12px 30px rgba(0,0,0,0.6);
+          z-index: 100;
+          padding: 0.35rem;
+        }
+        .tenant-dropdown-title {
+          padding: 0.45rem 0.55rem 0.35rem;
+          color: var(--color-text-muted);
+          font-size: 0.68rem;
+          font-weight: 800;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+        }
+        .tenant-dropdown-item {
+          padding: 0.55rem;
+          border-radius: var(--radius-md);
+          color: var(--color-text-primary);
+        }
+        .tenant-dropdown-item + .tenant-dropdown-item {
+          margin-top: 0.1rem;
+        }
+        .tenant-dropdown-item:hover {
+          background: rgba(255,255,255,0.055);
+        }
+        .tenant-dropdown-main {
+          display: flex;
+          align-items: center;
+          gap: 0.45rem;
+          min-width: 0;
+        }
+        .tenant-dropdown-seq {
+          flex: 0 0 auto;
+          color: var(--color-text-muted);
+          font-size: 0.72rem;
+          font-weight: 800;
+        }
+        .tenant-dropdown-name {
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          font-size: 0.84rem;
+          font-weight: 800;
+        }
+        .tenant-dropdown-badge {
+          flex: 0 0 auto;
+          color: var(--color-success);
+          font-size: 0.66rem;
+          font-weight: 800;
+          text-transform: uppercase;
+        }
+        .tenant-dropdown-doc,
+        .tenant-dropdown-empty {
+          margin-top: 0.2rem;
+          color: var(--color-text-muted);
+          font-size: 0.74rem;
+          overflow-wrap: anywhere;
+        }
+        .tenant-dropdown-empty {
+          padding: 0.55rem;
+        }
+        .tenant-dropdown-link {
+          display: block;
+          margin-top: 0.25rem;
+          padding: 0.6rem 0.55rem;
+          border-top: 1px solid var(--color-border);
+          color: var(--color-text-primary);
+          font-size: 0.8rem;
+          font-weight: 800;
+          text-decoration: none;
+        }
         @media (max-width: 768px) {
           .mobile-menu-btn { display: flex; }
           .view-mode-label { display: none; }
+          .tenant-indicator {
+            max-width: 44vw;
+            padding: 0 0.5rem;
+            gap: 0.35rem;
+            font-size: 0.72rem;
+          }
+          .tenant-indicator-label {
+            display: none;
+          }
+        }
+        @media (max-width: 420px) {
+          .tenant-indicator {
+            max-width: 38vw;
+          }
         }
       `}</style>
     </header>

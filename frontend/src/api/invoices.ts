@@ -1,5 +1,5 @@
 import api from './client';
-import type { TenantProfile } from './tenant';
+import type { TenantCompany, TenantProfile } from './tenant';
 
 export interface Client {
   id: number;
@@ -14,6 +14,8 @@ export interface Client {
 
 export interface Invoice {
   id: number;
+  issuer_company: number | null;
+  issuer_company_name: string;
   number: number;
   number_display: string;
   status: 'draft' | 'issued' | 'paid' | 'cancelled';
@@ -67,6 +69,7 @@ export type CreateInvoicePayload = Partial<Invoice> & { launch_financial?: boole
 export interface InvoicePrintData {
   invoice: Invoice;
   tenant: TenantProfile | null;
+  issuer_company: TenantCompany | null;
   service_code_description: string;
 }
 
@@ -75,6 +78,7 @@ export interface InvoiceNfseGuide {
   service_code_description: string;
   portal_url: string;
   fields: {
+    issuer: Record<string, string>;
     client: Record<string, string>;
     service: Record<string, string>;
     values: Record<string, string | boolean>;

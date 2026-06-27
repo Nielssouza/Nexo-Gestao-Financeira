@@ -16,7 +16,7 @@ from common.balance import (
 from common.months import month_bounds, month_value_to_date, shift_month
 from common.security import resolve_safe_redirect_url
 from common.tenancy import assign_tenant, resolve_tenant
-from tenants.models import TenantMembership
+from tenants.models import Tenant, TenantMembership
 from transactions.models import Transaction
 
 
@@ -143,10 +143,18 @@ class BalanceFunctionsTests(TestCase):
             username="common-balance-user",
             password="test-password-123",
         )
-        self.tenant = TenantMembership.objects.get(
+        self.tenant = Tenant.objects.create(
+            name="Common Balance Tenant",
+            slug="common-balance-tenant",
+            owner=self.user,
+            document="12345678901",
+        )
+        TenantMembership.objects.create(
+            tenant=self.tenant,
             user=self.user,
+            role=TenantMembership.Role.OWNER,
             is_default=True,
-        ).tenant
+        )
         self.primary = Account.objects.create(
             user=self.user,
             tenant=self.tenant,

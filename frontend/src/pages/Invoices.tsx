@@ -41,6 +41,7 @@ function nfseBadgeClass(status: Invoice['nfse_status']) {
 
 function printInvoice(data: InvoicePrintData) {
   const { invoice, tenant, service_code_description } = data;
+  const issuer = data.issuer_company || tenant;
   const printWindow = window.open('', '_blank', 'width=900,height=700');
   if (!printWindow) return;
 
@@ -72,10 +73,10 @@ function printInvoice(data: InvoicePrintData) {
             ${invoice.nfse_number ? `<p>NFS-e: ${invoice.nfse_number}</p>` : ''}
           </div>
           <div>
-            <strong>${tenant?.name || ''}</strong>
-            <p>${tenant?.document || ''}</p>
-            <p>${tenant?.full_address || ''}</p>
-            <p>${tenant?.email || ''}</p>
+            <strong>${issuer?.name || ''}</strong>
+            <p>${issuer?.document || ''}</p>
+            <p>${issuer?.full_address || ''}</p>
+            <p>${issuer?.email || ''}</p>
           </div>
         </div>
         <h2>Tomador</h2>

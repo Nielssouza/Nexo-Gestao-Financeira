@@ -1,7 +1,10 @@
+import re
+
 from django.db import transaction
 from django.utils.text import slugify
+from rest_framework.exceptions import PermissionDenied
 
-from tenants.models import Tenant, TenantMembership
+from tenants.models import Tenant, TenantCompany, TenantMembership
 
 
 def build_default_tenant_name(user):
@@ -27,21 +30,49 @@ def build_unique_tenant_slug(base_value, *, fallback_suffix):
     return candidate
 
 
-@transaction.atomic
-def create_personal_tenant_for_user(user):
-    tenant_name = build_default_tenant_name(user)
-    tenant = Tenant.objects.create(
-        name=tenant_name,
-        slug=build_unique_tenant_slug(tenant_name, fallback_suffix=user.pk),
-        owner=user,
-    )
-    TenantMembership.objects.create(
+def normalize_tenant_document(document):
+    digits = re.sub(r"\D", "", document or "")
+    if len(digits) not in (11, 14):
+        raise PermissionDenied("Tenant sem CPF ou CNPJ valido.")
+    return digits
+
+
+def ensure_default_tenant_company(tenant):
+    document = normalize_tenant_document(tenant.document)
+
+    company = tenant.companies.filter(is_default=True).first()
+    if company:
+        if not company.document:
+            company.document = document
+            company.save(update_fields=["document", "updated_at"])
+        return company
+
+    company = tenant.companies.order_by("sequence_number", "id").first()
+    if company:
+        company.is_default = True
+        company.is_active = True
+        if not company.document:
+            company.document = document
+        company.save(update_fields=["is_default", "is_active", "document", "updated_at"])
+        return company
+
+    return TenantCompany.objects.create(
         tenant=tenant,
-        user=user,
-        role=TenantMembership.Role.OWNER,
+        name=tenant.name,
+        document=document,
+        sequence_number="1",
+        email=tenant.email,
+        phone=tenant.phone,
+        address=tenant.address,
+        address_number=tenant.address_number,
+        address_complement=tenant.address_complement,
+        district=tenant.district,
+        city=tenant.city,
+        state=tenant.state,
+        postal_code=tenant.postal_code,
         is_default=True,
+        is_active=True,
     )
-    return tenant
 
 
 @transaction.atomic
@@ -67,7 +98,7 @@ def ensure_user_has_tenant(user):
             membership.save(update_fields=["is_default", "updated_at"])
         return membership.tenant
 
-    return create_personal_tenant_for_user(user)
+    raise PermissionDenied("Usuario nao possui tenant ativo. Cadastre CPF ou CNPJ para criar um tenant.")
 
 
 def get_request_tenant(request):

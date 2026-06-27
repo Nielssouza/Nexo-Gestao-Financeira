@@ -15,7 +15,7 @@ const pageTitles: Record<string, string> = {
   '/shopping': 'Compras',
   '/investments': 'Investimentos',
   '/settings/company': 'Empresa',
-  '/settings/users': 'Cadastro Pendente',
+  '/admin': 'Administração',
 };
 
 function readViewMode(): ViewMode {

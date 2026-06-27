@@ -6,6 +6,7 @@ from rest_framework.test import APIClient
 
 from accounts.models import Account
 from invoices.models import Invoice
+from tenants.models import Tenant, TenantMembership
 from transactions.models import Transaction
 
 User = get_user_model()
@@ -14,7 +15,18 @@ User = get_user_model()
 class InvoiceApiViewSetTest(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username="apiuser", password="123")
-        self.tenant = self.user.tenant_memberships.get().tenant
+        self.tenant = Tenant.objects.create(
+            name="API Tenant",
+            slug="api-tenant",
+            owner=self.user,
+            document="12345678901",
+        )
+        TenantMembership.objects.create(
+            tenant=self.tenant,
+            user=self.user,
+            role=TenantMembership.Role.OWNER,
+            is_default=True,
+        )
         self.client = APIClient()
         self.client.force_authenticate(self.user)
         self.account = Account.objects.create(

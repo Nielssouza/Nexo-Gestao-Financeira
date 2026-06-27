@@ -20,6 +20,10 @@ function formatCNPJ(v: string) {
     .replace(/(\d{4})(\d{1,2})$/, '$1-$2');
 }
 
+function workspaceDocumentLabel(type: 'pf' | 'pj') {
+  return type === 'pf' ? 'CPF' : 'CNPJ';
+}
+
 export default function Register() {
   const [personType, setPersonType] = useState<'pf' | 'pj'>('pf');
   const [name, setName] = useState('');
@@ -30,6 +34,9 @@ export default function Register() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const workspaceName = name.trim() || (personType === 'pf' ? 'Seu nome completo' : 'Razão social');
+  const workspaceDocument = document.trim() || (personType === 'pf' ? '000.000.000-00' : '00.000.000/0000-00');
+  const workspaceLabel = workspaceDocumentLabel(personType);
 
   const handleDocumentChange = (v: string) => {
     setDocument(personType === 'pf' ? formatCPF(v) : formatCNPJ(v));
@@ -153,6 +160,44 @@ export default function Register() {
             inputMode="numeric"
             required
           />
+        </div>
+
+        <div
+          aria-live="polite"
+          style={{
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-md)',
+            background: 'rgba(255,255,255,0.03)',
+            padding: '0.85rem',
+          }}
+        >
+          <div style={{
+            fontSize: '0.68rem',
+            fontWeight: 800,
+            letterSpacing: '0.06em',
+            textTransform: 'uppercase',
+            color: 'var(--color-text-muted)',
+            marginBottom: '0.55rem',
+          }}>
+            Tenant atribuído automaticamente
+          </div>
+          <div style={{ display: 'grid', gap: '0.45rem' }}>
+            <div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginBottom: 2 }}>Ambiente</div>
+              <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--color-text-primary)', overflowWrap: 'anywhere' }}>
+                {workspaceName}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginBottom: 2 }}>{workspaceLabel}</div>
+              <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                {workspaceDocument}
+              </div>
+            </div>
+          </div>
+          <p style={{ margin: '0.65rem 0 0', fontSize: '0.78rem', color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
+            Este tenant será criado automaticamente ao enviar o cadastro. O acesso fica pendente até validação do administrador.
+          </p>
         </div>
 
         {/* Email */}

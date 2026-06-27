@@ -5,6 +5,7 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 
 from investments.models import Investment, InvestmentEntry
+from tenants.models import Tenant, TenantMembership
 
 
 class InvestmentApiTests(TestCase):
@@ -18,7 +19,30 @@ class InvestmentApiTests(TestCase):
             username="investment-api-other",
             password="secret123",
         )
-        self.tenant = self.user.tenant_memberships.get().tenant
+        self.tenant = Tenant.objects.create(
+            name="Investment Tenant",
+            slug="investment-tenant",
+            owner=self.user,
+            document="12345678901",
+        )
+        TenantMembership.objects.create(
+            tenant=self.tenant,
+            user=self.user,
+            role=TenantMembership.Role.OWNER,
+            is_default=True,
+        )
+        self.other_tenant = Tenant.objects.create(
+            name="Other Investment Tenant",
+            slug="other-investment-tenant",
+            owner=self.other_user,
+            document="12345678902",
+        )
+        TenantMembership.objects.create(
+            tenant=self.other_tenant,
+            user=self.other_user,
+            role=TenantMembership.Role.OWNER,
+            is_default=True,
+        )
         self.investment = Investment.objects.create(
             user=self.user,
             tenant=self.tenant,
@@ -28,6 +52,7 @@ class InvestmentApiTests(TestCase):
         )
         self.other_investment = Investment.objects.create(
             user=self.other_user,
+            tenant=self.other_tenant,
             name="Outro Investimento API",
             investment_type=Investment.InvestmentType.STOCKS,
         )

@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createInvoice, updateInvoice, type Invoice } from '../../api/invoices';
+import { fetchTenantCompanies } from '../../api/tenant';
 
 interface InvoiceModalProps {
   invoice: Invoice | null;
@@ -14,6 +15,13 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
   const [error, setError] = useState('');
   
   const queryClient = useQueryClient();
+
+  const { data: tenantCompanies = [] } = useQuery({
+    queryKey: ['tenantCompanies'],
+    queryFn: fetchTenantCompanies,
+    enabled: isOpen,
+  });
+  const defaultCompany = tenantCompanies.find((company) => company.is_default) || tenantCompanies[0];
 
   const createMutation = useMutation({
     mutationFn: createInvoice,
@@ -52,6 +60,7 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
     if (!payload.ir_rate) delete payload.ir_rate;
     if (!payload.inss_rate) delete payload.inss_rate;
     if (!payload.expected_account) delete payload.expected_account;
+    if (!payload.issuer_company) delete payload.issuer_company;
 
     try {
       if (invoice) {
@@ -81,6 +90,23 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
           {error && (
             <div style={{ background: 'var(--color-danger-muted)', color: 'var(--color-danger)', padding: '10px 14px', borderRadius: 'var(--radius-md)', fontSize: '0.85rem', marginBottom: 'var(--space-md)' }}>
               {error}
+            </div>
+          )}
+
+          {tenantCompanies.length > 0 && (
+            <div style={{ marginBottom: 'var(--space-md)' }}>
+              <label className="label">Empresa emissora</label>
+              <select
+                name="issuer_company"
+                className="input"
+                defaultValue={invoice?.issuer_company || defaultCompany?.id || ''}
+              >
+                {tenantCompanies.map((company) => (
+                  <option key={company.id} value={company.id}>
+                    {company.sequence_number} - {company.name}
+                  </option>
+                ))}
+              </select>
             </div>
           )}
 

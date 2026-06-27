@@ -1,4 +1,7 @@
+import re
+
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
 
@@ -63,6 +66,85 @@ class Tenant(models.Model):
 
     def __str__(self):
         return self.name
+
+    def _normalize_document(self):
+        digits = re.sub(r"\D", "", self.document or "")
+        if not digits:
+            raise ValidationError({"document": "Informe CPF ou CNPJ para criar o tenant."})
+        if len(digits) not in (11, 14):
+            raise ValidationError({"document": "Informe CPF com 11 digitos ou CNPJ com 14 digitos."})
+        self.document = digits
+
+    def save(self, *args, **kwargs):
+        self._normalize_document()
+        super().save(*args, **kwargs)
+
+    @property
+    def formatted_address_line(self):
+        parts = [self.address]
+        if self.address_number:
+            parts.append(self.address_number)
+        if self.address_complement:
+            parts.append(self.address_complement)
+        if self.district:
+            parts.append(self.district)
+        return ", ".join(part for part in parts if part)
+
+    @property
+    def formatted_city_state(self):
+        if self.city and self.state:
+            return f"{self.city} - {self.state}"
+        return self.city or self.state
+
+    @property
+    def full_address(self):
+        parts = [self.formatted_address_line, self.formatted_city_state]
+        if self.postal_code:
+            parts.append(f"CEP {self.postal_code}")
+        return " | ".join(part for part in parts if part)
+
+
+class TenantCompany(models.Model):
+    tenant = models.ForeignKey(
+        Tenant,
+        on_delete=models.CASCADE,
+        related_name="companies",
+    )
+    name = models.CharField("Nome", max_length=160)
+    document = models.CharField("CNPJ/CPF", max_length=20, blank=True)
+    sequence_number = models.CharField("Sequencia numerica", max_length=20)
+    email = models.EmailField("E-mail", blank=True)
+    phone = models.CharField("Telefone", max_length=20, blank=True)
+    address = models.CharField("Logradouro", max_length=200, blank=True)
+    address_number = models.CharField("Numero", max_length=20, blank=True)
+    address_complement = models.CharField("Complemento", max_length=100, blank=True)
+    district = models.CharField("Bairro", max_length=100, blank=True)
+    city = models.CharField("Cidade", max_length=100, blank=True)
+    state = models.CharField("UF", max_length=2, blank=True)
+    postal_code = models.CharField("CEP", max_length=9, blank=True)
+    is_default = models.BooleanField("Empresa padrao", default=False)
+    is_active = models.BooleanField("Ativa", default=True)
+    created_at = models.DateTimeField("Criado em", auto_now_add=True)
+    updated_at = models.DateTimeField("Atualizado em", auto_now=True)
+
+    class Meta:
+        ordering = ("sequence_number", "name", "id")
+        verbose_name = "Empresa do tenant"
+        verbose_name_plural = "Empresas do tenant"
+        constraints = [
+            models.UniqueConstraint(
+                fields=("tenant", "sequence_number"),
+                name="unique_company_sequence_per_tenant",
+            ),
+            models.UniqueConstraint(
+                fields=("tenant",),
+                condition=Q(is_default=True),
+                name="unique_default_company_per_tenant",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.sequence_number} - {self.name}"
 
     @property
     def formatted_address_line(self):
@@ -151,3 +233,31 @@ class TenantMembership(models.Model):
 
     def __str__(self):
         return f"{self.user} @ {self.tenant}"
+
+
+class TenantCompanyAccess(models.Model):
+    membership = models.ForeignKey(
+        TenantMembership,
+        on_delete=models.CASCADE,
+        related_name="company_accesses",
+    )
+    company = models.ForeignKey(
+        TenantCompany,
+        on_delete=models.CASCADE,
+        related_name="membership_accesses",
+    )
+    created_at = models.DateTimeField("Criado em", auto_now_add=True)
+
+    class Meta:
+        ordering = ("company__sequence_number", "company__name", "id")
+        verbose_name = "Acesso a empresa do tenant"
+        verbose_name_plural = "Acessos a empresas do tenant"
+        constraints = [
+            models.UniqueConstraint(
+                fields=("membership", "company"),
+                name="unique_tenant_company_access",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.membership} -> {self.company}"

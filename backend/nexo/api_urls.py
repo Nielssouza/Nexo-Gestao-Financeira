@@ -13,7 +13,13 @@ from dashboard.api_views import DashboardView
 from investments.api_views import InvestmentEntryViewSet, InvestmentViewSet
 from invoices.api_views import ClientViewSet, InvoiceViewSet
 from shopping.api_views import ShoppingItemViewSet, ShoppingListViewSet
-from tenants.api_views import CepLookupView, NfseCredentialViewSet, TenantMembershipViewSet, TenantProfileView
+from tenants.api_views import (
+    CepLookupView,
+    NfseCredentialViewSet,
+    TenantCompanyViewSet,
+    TenantMembershipViewSet,
+    TenantProfileView,
+)
 from transactions.api_views import ClosedMonthViewSet, TransactionViewSet
 from users.api_views import (
     ApproveUserView,
@@ -37,6 +43,7 @@ router.register("shopping-items", ShoppingItemViewSet)
 router.register("investments", InvestmentViewSet)
 router.register("investment-entries", InvestmentEntryViewSet)
 router.register("tenant-memberships", TenantMembershipViewSet, basename="tenant-membership")
+router.register("tenant-companies", TenantCompanyViewSet, basename="tenant-company")
 router.register("nfse-credentials", NfseCredentialViewSet, basename="nfse-credential")
 
 app_name = "api"

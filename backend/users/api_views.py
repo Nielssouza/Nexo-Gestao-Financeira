@@ -8,6 +8,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 
 from common.api_mixins import get_user_tenant
 from common.throttles import LoginThrottle
+from tenants.models import TenantMembership
 from users.serializers import PendingUserSerializer, RegisterSerializer, UserSerializer
 
 User = get_user_model()
@@ -29,10 +30,17 @@ class MeView(APIView):
     def get(self, request):
         user_data = UserSerializer(request.user).data
         tenant = get_user_tenant(request.user)
+        membership = (
+            TenantMembership.objects.filter(user=request.user, tenant=tenant).first()
+            if tenant else None
+        )
         tenant_data = {
             "id": tenant.pk,
             "name": tenant.name,
             "slug": tenant.slug,
+            "person_type": tenant.person_type,
+            "person_type_display": tenant.get_person_type_display(),
+            "role": membership.role if membership else None,
         } if tenant else None
 
         return Response({

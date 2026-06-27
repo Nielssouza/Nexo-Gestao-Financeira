@@ -11,11 +11,12 @@ from invoices.models import Client, Invoice
 from invoices.serializers import ClientSerializer, InvoicePaySerializer, InvoiceSerializer
 from invoices.service_codes import SERVICE_CODES
 from invoices.services import invoice_transaction_description, sync_invoice_transaction
-from tenants.serializers import TenantSerializer
+from tenants.models import TenantMembership
+from tenants.serializers import TenantCompanySerializer, TenantSerializer
 
 
 class InvoiceViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
-    queryset = Invoice.objects.select_related("expected_account").all()
+    queryset = Invoice.objects.select_related("expected_account", "issuer_company").all()
     serializer_class = InvoiceSerializer
     search_fields = ("client_name", "client_document", "service_description")
     filterset_fields = {
@@ -26,6 +27,25 @@ class InvoiceViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
     ordering_fields = ("number", "issue_date", "gross_value")
     ordering = ("-number",)
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        tenant = self.get_tenant()
+        membership = TenantMembership.objects.filter(user=self.request.user, tenant=tenant).first()
+        is_admin = bool(
+            self.request.user.is_superuser or
+            (membership and membership.role in (TenantMembership.Role.OWNER, TenantMembership.Role.ADMIN))
+        )
+        if is_admin:
+            return queryset
+        if not membership:
+            return queryset.none()
+        return queryset.filter(issuer_company__membership_accesses__membership=membership).distinct()
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["tenant"] = self.get_tenant()
+        return context
+
     def _service_code_description(self, invoice):
         return dict(SERVICE_CODES).get(invoice.service_code, "")
 
@@ -33,10 +53,25 @@ class InvoiceViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
         tenant = self.get_tenant()
         launch_financial = serializer.validated_data.pop("launch_financial", False)
         save_client = serializer.validated_data.pop("save_client", False)
+        issuer_company = serializer.validated_data.get("issuer_company")
+        if issuer_company is None:
+            membership = TenantMembership.objects.filter(user=self.request.user, tenant=tenant).first()
+            is_admin = bool(
+                self.request.user.is_superuser or
+                (membership and membership.role in (TenantMembership.Role.OWNER, TenantMembership.Role.ADMIN))
+            )
+            if is_admin:
+                issuer_company = tenant.companies.filter(is_default=True, is_active=True).first()
+            elif membership:
+                access = membership.company_accesses.select_related("company").filter(
+                    company__is_active=True
+                ).first()
+                issuer_company = access.company if access else None
 
         invoice = serializer.save(
             user=self.request.user,
             tenant=tenant,
+            issuer_company=issuer_company,
             number=Invoice.next_number(tenant),
             status=Invoice.ISSUED,
         )
@@ -238,9 +273,11 @@ class InvoiceViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
         """Return all data needed to render/print an invoice in the SPA."""
         invoice = self.get_object()
         tenant = invoice.tenant or self.get_tenant()
+        issuer_company = invoice.issuer_company
         return Response({
             "invoice": InvoiceSerializer(invoice).data,
             "tenant": TenantSerializer(tenant).data if tenant else None,
+            "issuer_company": TenantCompanySerializer(issuer_company).data if issuer_company else None,
             "service_code_description": self._service_code_description(invoice),
         })
 
@@ -254,6 +291,11 @@ class InvoiceViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
             "service_code_description": service_code_description,
             "portal_url": "https://www.nfse.gov.br/EmissorNacional/Login",
             "fields": {
+                "issuer": {
+                    "name": invoice.issuer_company.name if invoice.issuer_company else "",
+                    "document": invoice.issuer_company.document if invoice.issuer_company else "",
+                    "sequence_number": invoice.issuer_company.sequence_number if invoice.issuer_company else "",
+                },
                 "client": {
                     "name": invoice.client_name,
                     "document": invoice.client_document,

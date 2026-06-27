@@ -7,7 +7,7 @@ import {
   FileText,
   ShoppingCart,
   TrendingUp,
-  Users,
+  ShieldCheck,
   PanelLeftClose,
   PanelLeftOpen,
 } from 'lucide-react';
@@ -31,9 +31,12 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ isOpen, onClose, collapsed, onToggleCollapse }: SidebarProps) {
-  const { user } = useAuth();
-  const items = user?.is_superuser
-    ? [...navItems, { to: '/settings/users', icon: Users, label: 'Cadastro Pendente' }]
+  const { user, tenant } = useAuth();
+  const canManageUsers = Boolean(
+    user?.is_superuser || tenant?.role === 'owner' || tenant?.role === 'admin'
+  );
+  const items = canManageUsers
+    ? [...navItems, { to: '/admin', icon: ShieldCheck, label: 'Administração' }]
     : navItems;
 
   return (
@@ -71,7 +74,7 @@ export default function Sidebar({ isOpen, onClose, collapsed, onToggleCollapse }
             <NavLink
               key={to}
               to={to}
-              end={to === '/dashboard'}
+              end={to === '/dashboard' || to === '/admin'}
               className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
               onClick={onClose}
               title={collapsed ? label : undefined}

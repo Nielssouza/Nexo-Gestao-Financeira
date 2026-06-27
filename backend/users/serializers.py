@@ -1,10 +1,12 @@
 import re
 
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from django.utils.text import slugify
 from rest_framework import serializers
 
 from tenants.models import Tenant, TenantMembership
+from tenants.services import ensure_default_tenant_company
 
 User = get_user_model()
 
@@ -107,6 +109,7 @@ class RegisterSerializer(serializers.Serializer):
         attrs["document"] = doc
         return attrs
 
+    @transaction.atomic
     def create(self, validated_data):
         person_type = validated_data["person_type"]
         document = validated_data["document"]
@@ -145,6 +148,7 @@ class RegisterSerializer(serializers.Serializer):
             document=document,
             person_type=person_type,
         )
+        ensure_default_tenant_company(tenant)
 
         TenantMembership.objects.filter(user=user, is_default=True).update(is_default=False)
         TenantMembership.objects.update_or_create(

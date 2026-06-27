@@ -44,7 +44,14 @@ describe('auth api', () => {
         last_name: '',
         is_superuser: true,
       },
-      tenant: { id: 2, name: 'Empresa', slug: 'empresa' },
+      tenant: {
+        id: 2,
+        name: 'Empresa',
+        slug: 'empresa',
+        person_type: 'pj',
+        person_type_display: 'Pessoa Jurídica',
+        role: 'owner',
+      },
     };
     apiMock.get.mockResolvedValueOnce({ data: profile });
 
