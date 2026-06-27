@@ -464,6 +464,7 @@ function BackupTab({ isSuperuser }: { isSuperuser: boolean }) {
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   if (!isSuperuser) {
     return (
@@ -477,14 +478,17 @@ function BackupTab({ isSuperuser }: { isSuperuser: boolean }) {
     );
   }
 
-  const handleUpload = async () => {
+  const handleUploadClick = () => {
     if (!file) return;
-    if (!confirm('ATENÇÃO: Restaurar o backup substituirá o banco de dados atual. Conexões ativas podem ser interrompidas e dados atuais serão perdidos. Tem certeza?')) return;
-    
+    setShowConfirmModal(true);
+  };
+
+  const executeUpload = async () => {
+    setShowConfirmModal(false);
     setIsUploading(true);
     setMessage(null);
     try {
-      const res = await uploadBackupFile(file);
+      const res = await uploadBackupFile(file!);
       setMessage({ text: res.detail || 'Backup restaurado com sucesso!', type: 'success' });
       setFile(null);
     } catch (err: any) {
@@ -498,57 +502,96 @@ function BackupTab({ isSuperuser }: { isSuperuser: boolean }) {
   };
 
   return (
-    <div className="card" style={{ padding: 0 }}>
-      <div
-        style={{
-          padding: '1rem 1.25rem',
-          borderBottom: '1px solid var(--color-border)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.75rem',
-        }}
-      >
-        <Database size={20} style={{ color: 'var(--color-accent)' }} />
-        <div>
-          <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>Restaurar Backup (PostgreSQL)</h3>
-          <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.82rem' }}>
-            Faça upload de um arquivo de backup (.sql, .dump ou .tar) para aplicar no banco de dados.
-          </p>
+    <>
+      <div className="card" style={{ padding: 0 }}>
+        <div
+          style={{
+            padding: '1rem 1.25rem',
+            borderBottom: '1px solid var(--color-border)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+          }}
+        >
+          <Database size={20} style={{ color: 'var(--color-accent)' }} />
+          <div>
+            <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>Restaurar Backup (PostgreSQL)</h3>
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.82rem' }}>
+              Faça upload de um arquivo de backup (.sql, .dump ou .tar) para aplicar no banco de dados.
+            </p>
+          </div>
+        </div>
+        
+        <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {message && (
+            <div className={`alert alert-${message.type}`} style={{ 
+              padding: '1rem', 
+              borderRadius: 'var(--radius-md)', 
+              background: message.type === 'error' ? 'rgba(255,50,50,0.1)' : 'rgba(50,255,50,0.1)',
+              color: message.type === 'error' ? '#ff6b6b' : '#51cf66',
+              border: `1px solid ${message.type === 'error' ? 'rgba(255,50,50,0.2)' : 'rgba(50,255,50,0.2)'}`
+            }}>
+              {message.text}
+            </div>
+          )}
+          
+          <input 
+            type="file" 
+            accept=".sql,.dump,.backup,.tar" 
+            onChange={(e) => setFile(e.target.files?.[0] || null)}
+            disabled={isUploading}
+            style={{ padding: '0.5rem', border: '1px dashed var(--color-border)', borderRadius: 'var(--radius-md)', cursor: 'pointer' }}
+          />
+          
+          <button 
+            className="btn btn-primary" 
+            disabled={!file || isUploading}
+            onClick={handleUploadClick}
+            style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+          >
+            {isUploading ? <span className="spinner" style={{ width: 16, height: 16 }} /> : <Database size={16} />}
+            {isUploading ? 'Restaurando...' : 'Restaurar Backup'}
+          </button>
         </div>
       </div>
-      
-      <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        {message && (
-          <div className={`alert alert-${message.type}`} style={{ 
-            padding: '1rem', 
-            borderRadius: 'var(--radius-md)', 
-            background: message.type === 'error' ? 'rgba(255,50,50,0.1)' : 'rgba(50,255,50,0.1)',
-            color: message.type === 'error' ? '#ff6b6b' : '#51cf66',
-            border: `1px solid ${message.type === 'error' ? 'rgba(255,50,50,0.2)' : 'rgba(50,255,50,0.2)'}`
-          }}>
-            {message.text}
-          </div>
-        )}
-        
-        <input 
-          type="file" 
-          accept=".sql,.dump,.backup,.tar" 
-          onChange={(e) => setFile(e.target.files?.[0] || null)}
-          disabled={isUploading}
-          style={{ padding: '0.5rem', border: '1px dashed var(--color-border)', borderRadius: 'var(--radius-md)', cursor: 'pointer' }}
-        />
-        
-        <button 
-          className="btn btn-primary" 
-          disabled={!file || isUploading}
-          onClick={handleUpload}
-          style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+
+      {showConfirmModal && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0,0,0,0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: '1rem',
+            animation: 'fadeIn 0.2s ease'
+          }}
         >
-          {isUploading ? <span className="spinner" style={{ width: 16, height: 16 }} /> : <Database size={16} />}
-          {isUploading ? 'Restaurando...' : 'Restaurar Backup'}
-        </button>
-      </div>
-    </div>
+          <div className="card" style={{ maxWidth: 450, width: '100%', padding: '1.5rem', animation: 'slideUp 0.2s ease' }}>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 800, marginBottom: '0.75rem', color: '#ff6b6b' }}>Atenção: Ação Irreversível</h3>
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.95rem', lineHeight: 1.5, marginBottom: '1.5rem' }}>
+              Restaurar o backup substituirá todo o banco de dados atual. Conexões ativas podem ser interrompidas e todos os dados atuais serão <strong>permanentemente perdidos</strong>.
+              <br /><br />
+              Tem certeza que deseja continuar?
+            </p>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+              <button className="btn" onClick={() => setShowConfirmModal(false)}>
+                Cancelar
+              </button>
+              <button 
+                className="btn" 
+                style={{ background: '#ff6b6b', color: '#fff', border: 'none' }}
+                onClick={executeUpload}
+              >
+                Sim, restaurar banco
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
