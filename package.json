@@ -2,7 +2,9 @@
   "name": "nexo-gestao-financeira",
   "private": true,
   "scripts": {
-    "heroku-postbuild": "npm --prefix frontend ci && npm --prefix frontend run build && rm -rf frontend/node_modules"
+    "build": "node scripts/build-frontend.js",
+    "dev": "node scripts/dev.js",
+    "heroku-postbuild": "node scripts/build-frontend.js --ci --prune"
   },
   "engines": {
     "node": "24.x",

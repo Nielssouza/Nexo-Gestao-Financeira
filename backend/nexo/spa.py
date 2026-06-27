@@ -13,7 +13,8 @@ class ReactAppView(View):
         index_path = settings.FRONTEND_DIST_DIR / "index.html"
         if not index_path.exists():
             return HttpResponseServerError(
-                "React build not found. Run `npm --prefix frontend run build`."
+                f"React build not found at {index_path}. "
+                "Run `npm run build` from the repository root and deploy again."
             )
 
         return FileResponse(index_path.open("rb"), content_type="text/html")

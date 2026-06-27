@@ -12,7 +12,15 @@ O backend fica sem SSR: a UI classica Django/HTMX foi removida. Em deploy de dyn
 
 ## Desenvolvimento Local
 
-Backend:
+Comando unico pela raiz:
+
+```powershell
+npm run dev
+```
+
+Esse comando sobe o Django primeiro em `http://127.0.0.1:8003`, espera a API responder e depois sobe o Vite em `http://localhost:5173`.
+
+Backend manual:
 
 ```powershell
 cd backend
@@ -61,7 +69,7 @@ O build do Heroku executa:
 - `npm --prefix frontend run build`
 - `python manage.py collectstatic`
 
-O `Procfile` da raiz sobe o Gunicorn apontando para `backend/nexo.wsgi`.
+O `Procfile` da raiz valida `frontend/dist/index.html` no release e depois sobe o Gunicorn apontando para `backend/nexo.wsgi`. Se aparecer `React build not found`, o buildpack Node.js nao rodou, rodou depois do Python, ou o deploy foi feito a partir da pasta `backend/` em vez da raiz do repositorio.
 
 Config minima:
 
