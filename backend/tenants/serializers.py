@@ -58,7 +58,6 @@ class NfseCredentialSerializer(serializers.ModelSerializer):
     """
     Aceita gov_br_password (plaintext, write-only) e criptografa antes de salvar.
     Nunca expõe gov_br_password_enc na resposta — apenas has_password (bool).
-    Espelho de NfseCredentialView.post() do SSR.
     """
     gov_br_password = serializers.CharField(write_only=True, required=False, allow_blank=True)
     has_password = serializers.SerializerMethodField(read_only=True)

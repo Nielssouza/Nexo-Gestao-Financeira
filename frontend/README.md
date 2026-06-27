@@ -1,6 +1,6 @@
 # Nexo Frontend
 
-React + TypeScript + Vite. Este app e deployado separado do backend Django e consome a API via `VITE_API_URL`.
+React + TypeScript + Vite. Este app pode ser deployado separado ou compilado junto do Django no mesmo dyno Heroku.
 
 ## Configuracao
 
@@ -16,10 +16,16 @@ Desenvolvimento local:
 VITE_API_URL=http://127.0.0.1:8003/api/v1
 ```
 
-Producao:
+Producao em deploy separado:
 
 ```env
 VITE_API_URL=https://api.seu-dominio.com/api/v1
+```
+
+Producao no mesmo dyno do Django:
+
+```env
+VITE_API_URL=/api/v1
 ```
 
 ## Desenvolvimento
@@ -37,4 +43,4 @@ O dev server roda em `http://localhost:5173`.
 npm run build
 ```
 
-O resultado fica em `frontend/dist` e pode ser publicado em qualquer host estatico.
+O resultado fica em `frontend/dist`. No deploy de dyno unico, o Django serve esse diretório como arquivos estaticos e usa `index.html` como fallback das rotas React.

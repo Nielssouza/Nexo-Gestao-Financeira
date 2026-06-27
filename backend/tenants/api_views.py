@@ -33,7 +33,7 @@ class TenantProfileView(generics.RetrieveUpdateAPIView):
 
 
 class TenantMembershipViewSet(generics.ListCreateAPIView, viewsets.GenericViewSet):
-    """ViewSet to list and create tenant memberships."""
+    """List and create tenant memberships."""
     serializer_class = TenantMembershipSerializer
 
     def get_queryset(self):
@@ -46,9 +46,8 @@ class TenantMembershipViewSet(generics.ListCreateAPIView, viewsets.GenericViewSe
 class NfseCredentialViewSet(viewsets.ModelViewSet):
     """
     Manage NFS-e gov.br credentials.
-    Accepts gov_br_password (plaintext) — encrypts before saving.
-    Never returns the encrypted password — only has_password (bool).
-    Mirrors NfseCredentialView SSR.
+    Accepts gov_br_password as plaintext and encrypts it before saving.
+    Never returns the encrypted password, only has_password.
     """
     serializer_class = NfseCredentialSerializer
 
@@ -60,28 +59,25 @@ class NfseCredentialViewSet(viewsets.ModelViewSet):
 
 
 class CepLookupView(APIView):
-    """
-    GET /api/v1/cep/<cep>/ — lookup address by CEP via ViaCEP.
-    Mirrors CepLookupView SSR with same rate limit (60/hour per user).
-    """
+    """GET /api/v1/cep/<cep>/ looks up an address by CEP through ViaCEP."""
     throttle_classes = [CepLookupThrottle]
 
     def get(self, request, cep):
         digits = "".join(c for c in cep if c.isdigit())
         if len(digits) != 8:
-            return Response({"error": "CEP inválido."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "CEP invalido."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             with urlopen(f"https://viacep.com.br/ws/{digits}/json/", timeout=8) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
         except (HTTPError, URLError, TimeoutError, json.JSONDecodeError):
             return Response(
-                {"error": "Não foi possível consultar o CEP."},
+                {"error": "Nao foi possivel consultar o CEP."},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
 
         if data.get("erro"):
-            return Response({"error": "CEP não encontrado."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "CEP nao encontrado."}, status=status.HTTP_404_NOT_FOUND)
 
         return Response({
             "address": data.get("logradouro", ""),

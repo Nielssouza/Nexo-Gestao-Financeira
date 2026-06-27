@@ -1,14 +1,14 @@
 # Nexo Gestao Financeira
 
-Aplicacao de gestao financeira com frontend React separado do backend Django.
+Aplicacao de gestao financeira com frontend React e backend Django REST.
 
 ## Arquitetura
 
-- `frontend/`: React + TypeScript + Vite. Consome a API por `VITE_API_URL`.
+- `frontend/`: React + TypeScript + Vite. Consome a API por `VITE_API_URL` ou `/api/v1` por padrao.
 - `backend/`: Django + Django REST Framework. Serve API, admin, jobs Celery e arquivos de media/static.
 - Autenticacao da API: JWT via `/api/v1/auth/token/` e `/api/v1/auth/token/refresh/`.
 
-O backend fica em modo API-only. A UI classica Django/HTMX foi removida; o frontend React e deployado separadamente.
+O backend fica sem SSR: a UI classica Django/HTMX foi removida. Em deploy de dyno unico, o Django entrega apenas o build estatico do React em `frontend/dist`.
 
 ## Desenvolvimento Local
 
@@ -45,7 +45,37 @@ E o backend deve permitir a origem do Vite:
 CORS_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 ```
 
-## Deploy Separado
+## Deploy em um dyno Heroku
+
+Para rodar React + Django no mesmo dyno do app `nexo-django-drf`, use o repositório pela raiz e configure os buildpacks nesta ordem:
+
+```powershell
+heroku buildpacks:clear -a nexo-django-drf
+heroku buildpacks:add heroku/nodejs -a nexo-django-drf
+heroku buildpacks:add heroku/python -a nexo-django-drf
+```
+
+O build do Heroku executa:
+
+- `npm --prefix frontend ci`
+- `npm --prefix frontend run build`
+- `python manage.py collectstatic`
+
+O `Procfile` da raiz sobe o Gunicorn apontando para `backend/nexo.wsgi`.
+
+Config minima:
+
+```powershell
+heroku config:set DJANGO_DEBUG=false -a nexo-django-drf
+heroku config:set SERVE_REACT_APP=true -a nexo-django-drf
+heroku config:set DJANGO_ALLOWED_HOSTS=nexo-django-drf.herokuapp.com,nexo.dscorp.top -a nexo-django-drf
+heroku config:set DJANGO_CSRF_TRUSTED_ORIGINS=https://nexo-django-drf.herokuapp.com,https://nexo.dscorp.top -a nexo-django-drf
+heroku config:set VITE_API_URL=/api/v1 -a nexo-django-drf
+```
+
+Como o frontend e a API ficam no mesmo dominio, CORS nao e necessario para o app em producao.
+
+## Deploy separado
 
 Frontend:
 

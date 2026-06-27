@@ -131,7 +131,6 @@ TEMPLATES = [
                 "django.template.context_processors.debug",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
-                "nexo.context_processors.app_flags",
             ],
         },
     },
@@ -212,6 +211,13 @@ USE_THOUSAND_SEPARATOR = True
 STATIC_URL = "/static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
+SERVE_REACT_APP = env_bool("SERVE_REACT_APP", default=not RUNSERVER)
+FRONTEND_DIST_DIR = Path(
+    os.getenv("FRONTEND_DIST_DIR", BASE_DIR.parent / "frontend" / "dist")
+)
+if SERVE_REACT_APP:
+    WHITENOISE_ROOT = FRONTEND_DIST_DIR
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"

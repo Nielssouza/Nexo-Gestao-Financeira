@@ -44,7 +44,7 @@ Deploy no Heroku com PostgreSQL. Stack: Django 6, Gunicorn, WhiteNoise, Tailwind
 - CSP (Content Security Policy) via middleware `nexo.middleware.ContentSecurityPolicyMiddleware`
 - Upload de logo valida extensão e content-type no servidor (bloqueia SVG)
 - `CnpjLookupView` exige autenticação (`LoginRequiredMixin`)
-- `InvoiceDeleteView` filtra por `user` e `tenant` (sem IDOR)
+- `InvoiceViewSet` filtra por tenant autenticado (sem IDOR)
 - Cache configurado: Redis se `REDIS_URL` disponível, senão LocMemCache
 
 ### Performance / Deploy

@@ -19,10 +19,7 @@ class IsSuperuser(permissions.BasePermission):
 
 
 class RateLimitedTokenObtainPairView(TokenObtainPairView):
-    """
-    JWT login com rate limit de 10 tentativas/minuto por IP.
-    Espelho de UserLoginView SSR com @ratelimit(key='ip', rate='10/m').
-    """
+    """JWT login with a 10 attempts/minute per-IP rate limit."""
     throttle_classes = [LoginThrottle]
 
 
@@ -45,30 +42,27 @@ class MeView(APIView):
 
 
 class RegisterAPIView(generics.CreateAPIView):
-    """Public registration (mirrors RegisterView SSR — creates user with is_active=False)."""
+    """Public registration. Creates an inactive user pending approval."""
     serializer_class = RegisterSerializer
     permission_classes = [permissions.AllowAny]
 
     def create(self, request, *args, **kwargs):
         if not getattr(settings, "PUBLIC_SIGNUP_ENABLED", False):
             return Response(
-                {"detail": "Cadastro público desabilitado no momento."},
+                {"detail": "Cadastro publico desabilitado no momento."},
                 status=status.HTTP_403_FORBIDDEN,
             )
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(
-            {"detail": "Cadastro enviado. Aguarde a validação do administrador."},
+            {"detail": "Cadastro enviado. Aguarde a validacao do administrador."},
             status=status.HTTP_201_CREATED,
         )
 
 
 class PendingUsersView(generics.ListAPIView):
-    """
-    Lista usuários aguardando aprovação (is_active=False).
-    Restrito a superusuários. Espelho de PendingUsersView SSR.
-    """
+    """List users pending approval. Restricted to superusers."""
     serializer_class = PendingUserSerializer
     permission_classes = [IsSuperuser]
 
@@ -81,10 +75,7 @@ class PendingUsersView(generics.ListAPIView):
 
 
 class ApproveUserView(APIView):
-    """
-    POST /api/v1/users/<pk>/approve/ — ativa um usuário pendente.
-    Restrito a superusuários. Espelho de ApproveUserView SSR.
-    """
+    """POST /api/v1/users/<pk>/approve/ activates a pending user."""
     permission_classes = [IsSuperuser]
 
     def post(self, request, pk):
@@ -96,16 +87,15 @@ class ApproveUserView(APIView):
 
 class LogoutView(APIView):
     """
-    POST /api/v1/auth/logout/ — invalida o refresh token via blacklist.
-    Espelho de UserLogoutView SSR que destroi a sessão.
-    Requer: { "refresh": "<refresh_token>" }
+    POST /api/v1/auth/logout/ invalidates the refresh token through the blacklist.
+    Requires: { "refresh": "<refresh_token>" }
     """
 
     def post(self, request):
         refresh_token = request.data.get("refresh")
         if not refresh_token:
             return Response(
-                {"detail": "Refresh token obrigatório."},
+                {"detail": "Refresh token obrigatorio."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         try:
@@ -114,7 +104,7 @@ class LogoutView(APIView):
             token.blacklist()
         except Exception:
             return Response(
-                {"detail": "Token inválido ou já expirado."},
+                {"detail": "Token invalido ou ja expirado."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         return Response({"detail": "Logout realizado com sucesso."}, status=status.HTTP_200_OK)
