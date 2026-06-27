@@ -116,3 +116,82 @@ class LogoutView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         return Response({"detail": "Logout realizado com sucesso."}, status=status.HTTP_200_OK)
+
+import os
+import subprocess
+import tempfile
+from rest_framework.parsers import MultiPartParser
+
+class RestoreBackupView(APIView):
+    """POST /api/v1/system/restore-backup/ uploads a postgres backup file and restores it."""
+    permission_classes = [IsSuperuser]
+    parser_classes = [MultiPartParser]
+
+    def post(self, request):
+        file_obj = request.FILES.get('file')
+        if not file_obj:
+            return Response({"detail": "Nenhum arquivo enviado."}, status=status.HTTP_400_BAD_REQUEST)
+
+        db_settings = settings.DATABASES['default']
+        if 'postgresql' not in db_settings['ENGINE']:
+            return Response(
+                {"detail": "O sistema atual não está utilizando PostgreSQL."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        tmp_path = None
+        try:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".backup") as tmp:
+                for chunk in file_obj.chunks():
+                    tmp.write(chunk)
+                tmp_path = tmp.name
+
+            db_name = db_settings['NAME']
+            db_user = db_settings['USER']
+            db_password = db_settings.get('PASSWORD', '')
+            db_host = db_settings.get('HOST', 'localhost')
+            db_port = db_settings.get('PORT', '5432')
+
+            env = os.environ.copy()
+            if db_password:
+                env["PGPASSWORD"] = db_password
+
+            cmd = [
+                "pg_restore",
+                "--clean",
+                "--if-exists",
+                "--no-owner",
+                "--no-privileges",
+                "-U", db_user,
+                "-h", db_host,
+                "-p", str(db_port),
+                "-d", db_name,
+                "-1",
+                tmp_path
+            ]
+            
+            result = subprocess.run(cmd, env=env, capture_output=True, text=True)
+            if result.returncode != 0 and "input file does not appear to be a valid archive" in result.stderr:
+                cmd = [
+                    "psql",
+                    "-U", db_user,
+                    "-h", db_host,
+                    "-p", str(db_port),
+                    "-d", db_name,
+                    "-f", tmp_path
+                ]
+                result = subprocess.run(cmd, env=env, capture_output=True, text=True)
+            
+            if result.returncode == 0:
+                return Response({"detail": "Backup restaurado com sucesso!"}, status=status.HTTP_200_OK)
+            else:
+                return Response({
+                    "detail": "Erro ao restaurar backup.",
+                    "error": result.stderr or result.stdout
+                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                
+        except Exception as e:
+            return Response({"detail": f"Erro interno: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        finally:
+            if tmp_path and os.path.exists(tmp_path):
+                os.unlink(tmp_path)
