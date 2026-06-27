@@ -4,14 +4,11 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchTransactionById, createTransaction, updateTransaction, type CreateTransactionPayload } from '../api/transactions';
 import { fetchAccounts, type Account } from '../api/accounts';
 import { fetchCategories, type Category } from '../api/categories';
-import { useViewMode } from '../contexts/ViewModeContext';
 
 const GAP = { display: 'flex', flexDirection: 'column' as const, gap: '1.25rem' };
 type RecurrenceType = CreateTransactionPayload['recurrence_type'];
 
 export default function TransactionForm() {
-  const { isMobile } = useViewMode();
-  const cols2 = isMobile ? '1fr' : '1fr 1fr';
   const { id } = useParams<{ id: string }>();
   const isEditing = Boolean(id);
   const navigate = useNavigate();
