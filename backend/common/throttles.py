@@ -2,20 +2,20 @@ from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 
 
 class LoginThrottle(AnonRateThrottle):
-    """10 tentativas de login por minuto por IP (espelho de ratelimit ip 10/m no SSR)."""
+    """10 login attempts per minute per IP."""
     scope = "login"
 
 
 class CnpjLookupThrottle(UserRateThrottle):
-    """60 consultas de CNPJ por hora por usuário (espelho de ratelimit user 60/h no SSR)."""
+    """60 CNPJ lookups per hour per user."""
     scope = "cnpj_lookup"
 
 
 class NfseEmitThrottle(UserRateThrottle):
-    """10 emissões NFSe por hora por usuário (espelho de ratelimit user 10/h no SSR)."""
+    """10 NFSe emission attempts per hour per user."""
     scope = "nfse_emit"
 
 
 class CepLookupThrottle(UserRateThrottle):
-    """60 consultas de CEP por hora por usuário (espelho de ratelimit user 60/h no SSR)."""
+    """60 CEP lookups per hour per user."""
     scope = "cep_lookup"
