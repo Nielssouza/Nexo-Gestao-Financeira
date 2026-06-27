@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Building2,
   CheckCircle2,
+  Database,
   LayoutDashboard,
   Shield,
   Users,
@@ -16,9 +17,10 @@ import {
   type PendingUser,
   type TenantMember,
 } from '../api/users';
+import { uploadBackupFile } from '../api/system';
 import { useAuth } from '../contexts/AuthContext';
 
-type Tab = 'dashboard' | 'cadastros';
+type Tab = 'dashboard' | 'cadastros' | 'backup';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -456,6 +458,100 @@ function EmpresasTab({ companies }: { companies: TenantCompany[] }) {
   );
 }
 
+// ─── Backup Tab ───────────────────────────────────────────────────────────────
+
+function BackupTab({ isSuperuser }: { isSuperuser: boolean }) {
+  const [file, setFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
+
+  if (!isSuperuser) {
+    return (
+      <div className="empty-state" style={{ padding: 'var(--space-2xl)' }}>
+        <Shield className="empty-state-icon" />
+        <h3 className="empty-state-title">Acesso restrito</h3>
+        <p className="empty-state-text">
+          Apenas superadministradores podem gerenciar backups.
+        </p>
+      </div>
+    );
+  }
+
+  const handleUpload = async () => {
+    if (!file) return;
+    if (!confirm('ATENÇÃO: Restaurar o backup substituirá o banco de dados atual. Conexões ativas podem ser interrompidas e dados atuais serão perdidos. Tem certeza?')) return;
+    
+    setIsUploading(true);
+    setMessage(null);
+    try {
+      const res = await uploadBackupFile(file);
+      setMessage({ text: res.detail || 'Backup restaurado com sucesso!', type: 'success' });
+      setFile(null);
+    } catch (err: any) {
+      setMessage({ 
+        text: err.response?.data?.detail || err.response?.data?.error || 'Erro ao restaurar backup.', 
+        type: 'error' 
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  return (
+    <div className="card" style={{ padding: 0 }}>
+      <div
+        style={{
+          padding: '1rem 1.25rem',
+          borderBottom: '1px solid var(--color-border)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.75rem',
+        }}
+      >
+        <Database size={20} style={{ color: 'var(--color-accent)' }} />
+        <div>
+          <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>Restaurar Backup (PostgreSQL)</h3>
+          <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.82rem' }}>
+            Faça upload de um arquivo de backup (.sql, .dump ou .tar) para aplicar no banco de dados.
+          </p>
+        </div>
+      </div>
+      
+      <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        {message && (
+          <div className={`alert alert-${message.type}`} style={{ 
+            padding: '1rem', 
+            borderRadius: 'var(--radius-md)', 
+            background: message.type === 'error' ? 'rgba(255,50,50,0.1)' : 'rgba(50,255,50,0.1)',
+            color: message.type === 'error' ? '#ff6b6b' : '#51cf66',
+            border: `1px solid ${message.type === 'error' ? 'rgba(255,50,50,0.2)' : 'rgba(50,255,50,0.2)'}`
+          }}>
+            {message.text}
+          </div>
+        )}
+        
+        <input 
+          type="file" 
+          accept=".sql,.dump,.backup,.tar" 
+          onChange={(e) => setFile(e.target.files?.[0] || null)}
+          disabled={isUploading}
+          style={{ padding: '0.5rem', border: '1px dashed var(--color-border)', borderRadius: 'var(--radius-md)', cursor: 'pointer' }}
+        />
+        
+        <button 
+          className="btn btn-primary" 
+          disabled={!file || isUploading}
+          onClick={handleUpload}
+          style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+        >
+          {isUploading ? <span className="spinner" style={{ width: 16, height: 16 }} /> : <Database size={16} />}
+          {isUploading ? 'Restaurando...' : 'Restaurar Backup'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function Administration() {
@@ -489,6 +585,7 @@ export default function Administration() {
   const tabs: { key: Tab; label: string; icon: LucideIcon }[] = [
     { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { key: 'cadastros', label: 'Cadastros', icon: Users },
+    { key: 'backup', label: 'Backup', icon: Database },
   ];
 
   return (
@@ -570,6 +667,9 @@ export default function Administration() {
           onApprove={(id) => approveMutation.mutate(id)}
           isPending={approveMutation.isPending}
         />
+      )}
+      {tab === 'backup' && (
+        <BackupTab isSuperuser={isSuperuser} />
       )}
       {false && <EmpresasTab companies={companies} />}
     </div>

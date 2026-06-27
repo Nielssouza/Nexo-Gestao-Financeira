@@ -20,10 +20,6 @@ function formatCNPJ(v: string) {
     .replace(/(\d{4})(\d{1,2})$/, '$1-$2');
 }
 
-function workspaceDocumentLabel(type: 'pf' | 'pj') {
-  return type === 'pf' ? 'CPF' : 'CNPJ';
-}
-
 export default function Register() {
   const [personType, setPersonType] = useState<'pf' | 'pj'>('pf');
   const [name, setName] = useState('');
@@ -34,10 +30,6 @@ export default function Register() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
-  const workspaceName = name.trim() || (personType === 'pf' ? 'Seu nome completo' : 'Razão social');
-  const workspaceDocument = document.trim() || (personType === 'pf' ? '000.000.000-00' : '00.000.000/0000-00');
-  const workspaceLabel = workspaceDocumentLabel(personType);
-
   const handleDocumentChange = (v: string) => {
     setDocument(personType === 'pf' ? formatCPF(v) : formatCNPJ(v));
   };

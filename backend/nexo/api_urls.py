@@ -28,6 +28,7 @@ from users.api_views import (
     PendingUsersView,
     RateLimitedTokenObtainPairView,
     RegisterAPIView,
+    RestoreBackupView,
 )
 
 router = DefaultRouter()
@@ -61,6 +62,7 @@ urlpatterns = [
     # User management (superuser only)
     path("users/pending/", PendingUsersView.as_view(), name="users_pending"),
     path("users/<int:pk>/approve/", ApproveUserView.as_view(), name="users_approve"),
+    path("system/restore-backup/", RestoreBackupView.as_view(), name="restore_backup"),
 
     # Dashboard
     path("dashboard/", DashboardView.as_view(), name="dashboard"),
