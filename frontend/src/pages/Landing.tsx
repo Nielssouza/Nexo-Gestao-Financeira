@@ -14,7 +14,7 @@ const txns = [
   { label: 'Dividendos',    cat: 'Investimentos',amount: '+ R$ 640,00', neg: false },
 ];
 
-const navLinks = ['Dashboard', 'Financeiro', 'Contas', 'Faturas', 'Compras', 'Investimentos'];
+const navLinks = ['Dashboard', 'Financeiro', 'Contas', 'Categorias', 'Faturas', 'Compras', 'Investimentos'];
 
 // same CHART_COLORS as Dashboard.tsx
 const CHART_COLORS = ['#7abf00', '#60a5fa', '#fbbf24', '#fb7185', '#34d399'];
@@ -160,7 +160,7 @@ function AppPreview() {
         border: '1px solid rgba(255,255,255,0.1)',
         borderRadius: 999, padding: 3,
       }}>
-        {([['mobile', Smartphone, 'Mobile'], ['desktop', Monitor, 'Desktop']] as const).map(([v, Icon, label]) => (
+        {([['desktop', Monitor, 'Desktop'], ['mobile', Smartphone, 'Mobile']] as const).map(([v, Icon, label]) => (
           <button key={v} onClick={() => setMode(v as 'mobile' | 'desktop')} style={{
             display: 'flex', alignItems: 'center', gap: 5,
             padding: '0.3rem 0.85rem', borderRadius: 999,
@@ -368,16 +368,16 @@ export default function Landing() {
 
       {/* Nav */}
       <nav style={{
-        position: 'sticky', top: 0, zIndex: 50, height: 60,
+        position: 'sticky', top: 0, zIndex: 50, height: 80,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '0 clamp(1rem, 4vw, 2.5rem)',
+        padding: '0 clamp(1.5rem, 5vw, 3.5rem)',
         background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(20px)',
         borderBottom: '1px solid rgba(255,255,255,0.07)',
       }}>
-        <span style={{ fontWeight: 900, fontSize: '1.25rem', letterSpacing: '-0.04em' }}>nexo</span>
-        <div style={{ display: 'flex', gap: '0.6rem' }}>
-          <Link to="/login" className="btn btn-secondary" style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}>Entrar</Link>
-          <Link to="/register" className="btn btn-primary" style={{ padding: '0.4rem 1rem', fontSize: '0.85rem' }}>Criar conta</Link>
+        <span style={{ fontWeight: 900, fontSize: '1.5rem', letterSpacing: '-0.04em' }}>nexo</span>
+        <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <Link to="/login" className="btn btn-secondary" style={{ padding: '0.55rem 1.4rem', fontSize: '0.95rem' }}>Entrar</Link>
+          <Link to="/register" className="btn btn-primary" style={{ padding: '0.55rem 1.4rem', fontSize: '0.95rem' }}>Criar conta</Link>
         </div>
       </nav>
 
@@ -402,7 +402,7 @@ export default function Landing() {
           </h1>
 
           <p style={{ fontSize: 'clamp(0.95rem, 2.5vw, 1.15rem)', color: 'rgba(255,255,255,0.55)', lineHeight: 1.7, maxWidth: 520, margin: '0 auto 2.5rem' }}>
-            Transações, contas, faturas de serviço, investimentos e listas de compras — tudo em um sistema com isolamento total por CPF ou CNPJ.
+            Transações, contas, faturas de serviço, investimentos e listas de compras — tudo em um só lugar.
           </p>
 
           <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap', marginBottom: '4rem' }}>
@@ -468,8 +468,8 @@ export default function Landing() {
       <section style={{ maxWidth: 860, margin: '0 auto', padding: '0 clamp(1rem, 4vw, 2.5rem) clamp(4rem, 8vw, 6rem)' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1px', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 20, overflow: 'hidden' }}>
           {[
-            { tag: 'Pessoa Física', color: '#34d399', title: 'Para o seu bolso', items: ['Controle de gastos mensais', 'Cartão de crédito e débito', 'Metas e investimentos pessoais', 'Listas de compras do dia a dia'] },
-            { tag: 'Pessoa Jurídica', color: '#60a5fa', title: 'Para seu negócio', items: ['Emissão de faturas com impostos', 'Fluxo de caixa empresarial', 'Gestão de contas PJ', 'Clientes e serviços LC 116'] },
+            { tag: 'Pessoa Física', color: '#34d399', title: 'Para o seu bolso', items: ['Controle de gastos mensais', 'Cartão de crédito e débito', 'Carteira de investimentos pessoais', 'Listas de compras do dia a dia'] },
+            { tag: 'Pessoa Jurídica', color: '#60a5fa', title: 'Para seu negócio', items: ['Emissão de faturas com impostos', 'Fluxo de caixa empresarial', 'Gestão de contas PJ', 'Serviços com tributação LC 116'] },
           ].map(({ tag, color, title, items }) => (
             <div key={tag} style={{ background: '#080808', padding: '2rem' }}>
               <span style={{ display: 'inline-block', fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color, background: `${color}18`, border: `1px solid ${color}40`, borderRadius: 999, padding: '0.2rem 0.65rem', marginBottom: '1rem' }}>{tag}</span>
