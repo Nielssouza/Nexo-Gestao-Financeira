@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, ArrowLeft, TrendingUp, PiggyBank, Edit2, Trash2 } from 'lucide-react';
+import { Plus, ArrowLeft, TrendingUp, PiggyBank, Edit2, Trash2, ChevronDown, ChevronUp, Search } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { 
   fetchInvestments, fetchInvestment, createInvestment, updateInvestment, deleteInvestment,
@@ -18,6 +18,10 @@ export default function Investments() {
   const [selectedInvId, setSelectedInvId] = useState<number | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingInv, setEditingInv] = useState<Investment | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [filterType, setFilterType] = useState('');
+  const [filterStatus, setFilterStatus] = useState('active');
 
   const queryClient = useQueryClient();
 
@@ -234,7 +238,27 @@ export default function Investments() {
     );
   }
 
+  const typeLabels: Record<string, string> = {
+    stocks: 'Ações', fii: 'FII', fixed_income: 'Renda Fixa',
+    crypto: 'Cripto', savings: 'Poupança', emergency: 'Reserva', other: 'Outros',
+  };
+
   // List View
+  const filtered = useMemo(() => {
+    return (investments ?? []).filter((inv) => {
+      if (filterStatus === 'active' && !inv.is_active) return false;
+      if (filterStatus === 'inactive' && inv.is_active) return false;
+      if (filterType && inv.investment_type !== filterType) return false;
+      if (search && !inv.name.toLowerCase().includes(search.toLowerCase()) && !inv.broker.toLowerCase().includes(search.toLowerCase())) return false;
+      return true;
+    });
+  }, [investments, filterStatus, filterType, search]);
+
+  const totalInvested  = filtered.reduce((s, i) => s + parseFloat(i.total_invested  || '0'), 0);
+  const totalWithdrawn = filtered.reduce((s, i) => s + parseFloat(i.total_withdrawn || '0'), 0);
+  const totalEarnings  = filtered.reduce((s, i) => s + parseFloat(i.total_earnings  || '0'), 0);
+  const totalNet       = filtered.reduce((s, i) => s + parseFloat(i.net_invested     || '0'), 0);
+
   return (
     <div className="animate-fade-in investments-page">
       <div className="page-header">
@@ -243,19 +267,98 @@ export default function Investments() {
         </button>
       </div>
 
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>
+        <div className="card" style={{ padding: 'var(--space-md)' }}>
+          <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 6 }}>Total Aportado</div>
+          <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--color-text-primary)' }}>{formatCurrency(totalInvested)}</div>
+        </div>
+        <div className="card" style={{ padding: 'var(--space-md)' }}>
+          <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 6 }}>Resgates</div>
+          <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--color-danger)' }}>{formatCurrency(totalWithdrawn)}</div>
+        </div>
+        <div className="card" style={{ padding: 'var(--space-md)' }}>
+          <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 6 }}>Rendimentos</div>
+          <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--color-success)' }}>{formatCurrency(totalEarnings)}</div>
+        </div>
+        <div className="card" style={{ padding: 'var(--space-md)' }}>
+          <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-text-muted)', marginBottom: 6 }}>Patrimônio Líquido</div>
+          <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--color-accent)' }}>{formatCurrency(totalNet)}</div>
+        </div>
+      </div>
+
+      {/* ── Filtros ── */}
+      <div className="card" style={{ marginBottom: 'var(--space-md)', padding: 0, overflow: 'hidden' }}>
+        <button
+          type="button"
+          onClick={() => setFiltersOpen((v) => !v)}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: 'var(--space-sm) var(--space-md)', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+        >
+          <div>
+            <div style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--color-accent)' }}>Filtros</div>
+            <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
+              {[
+                filterStatus === 'active' ? 'Ativos' : filterStatus === 'inactive' ? 'Inativos' : 'Todos',
+                filterType ? typeLabels[filterType] : '',
+                search ? `"${search}"` : '',
+              ].filter(Boolean).join(' · ')}
+            </div>
+          </div>
+          {filtersOpen ? <ChevronUp size={16} style={{ color: 'var(--color-text-muted)' }} /> : <ChevronDown size={16} style={{ color: 'var(--color-text-muted)' }} />}
+        </button>
+
+        {filtersOpen && (
+          <div style={{ borderTop: '1px solid var(--color-border)', padding: 'var(--space-md)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 'var(--space-md)', marginBottom: 'var(--space-md)' }}>
+              <div style={{ position: 'relative' }}>
+                <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)', pointerEvents: 'none' }} />
+                <input
+                  type="text"
+                  className="input"
+                  placeholder="Buscar por nome ou corretora…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  style={{ paddingLeft: 32 }}
+                />
+              </div>
+              <div>
+                <select className="input" value={filterType} onChange={(e) => setFilterType(e.target.value)}>
+                  <option value="">Todos os tipos</option>
+                  {Object.entries(typeLabels).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+              </div>
+              <div>
+                <select className="input" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+                  <option value="active">Somente ativos</option>
+                  <option value="inactive">Somente inativos</option>
+                  <option value="">Todos</option>
+                </select>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              style={{ width: '100%' }}
+              onClick={() => { setSearch(''); setFilterType(''); setFilterStatus('active'); }}
+            >
+              Limpar
+            </button>
+          </div>
+        )}
+      </div>
+
       {invsLoading ? (
         <div className="investment-list-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 'var(--space-md)' }}>
           {[1, 2, 3].map(i => <div key={i} className="skeleton" style={{ height: 160 }} />)}
         </div>
-      ) : investments?.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <div className="empty-state">
           <TrendingUp className="empty-state-icon" />
-          <h3 className="empty-state-title">Nenhum investimento</h3>
-          <p className="empty-state-text">Comece a registrar seus investimentos e controle seus aportes.</p>
+          <h3 className="empty-state-title">Nenhum investimento encontrado</h3>
+          <p className="empty-state-text">{investments?.length ? 'Tente ajustar os filtros.' : 'Comece a registrar seus investimentos e controle seus aportes.'}</p>
         </div>
       ) : (
         <div className="investment-list-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 'var(--space-md)' }}>
-          {investments?.map((inv) => (
+          {filtered.map((inv) => (
             <div 
               key={inv.id} 
               className="card" 
