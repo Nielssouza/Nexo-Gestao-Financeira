@@ -25,16 +25,20 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+const PUBLIC_PATHS = ['/', '/login', '/register'];
+
 // Response interceptor: auto-refresh token on 401
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+    const onPublicPage = PUBLIC_PATHS.includes(window.location.pathname);
 
     if (
       error.response?.status === 401 &&
       !originalRequest._retry &&
-      !originalRequest.url?.includes('auth/token')
+      !originalRequest.url?.includes('auth/token') &&
+      !onPublicPage
     ) {
       originalRequest._retry = true;
 
