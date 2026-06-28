@@ -21,6 +21,7 @@ from tenants.api_views import (
     TenantMembershipViewSet,
     TenantProfileView,
 )
+from todos.api_views import TodoItemViewSet
 from transactions.api_views import ClosedMonthViewSet, TransactionViewSet
 from users.api_views import (
     ApproveUserView,
@@ -51,6 +52,7 @@ router.register("investment-entries", InvestmentEntryViewSet)
 router.register("tenant-memberships", TenantMembershipViewSet, basename="tenant-membership")
 router.register("tenant-companies", TenantCompanyViewSet, basename="tenant-company")
 router.register("nfse-credentials", NfseCredentialViewSet, basename="nfse-credential")
+router.register("todos", TodoItemViewSet, basename="todo")
 
 app_name = "api"
 

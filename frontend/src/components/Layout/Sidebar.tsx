@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   PanelLeftClose,
   PanelLeftOpen,
+  CheckSquare,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -22,6 +23,7 @@ const navItems = [
   { to: '/invoices', icon: FileText, label: 'Faturas' },
   { to: '/shopping', icon: ShoppingCart, label: 'Compras' },
   { to: '/investments', icon: TrendingUp, label: 'Investimentos' },
+  { to: '/todos', icon: CheckSquare, label: 'Tarefas' },
 ];
 
 interface SidebarProps {

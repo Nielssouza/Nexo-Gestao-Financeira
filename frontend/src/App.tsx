@@ -16,6 +16,7 @@ import Shopping from './pages/Shopping';
 import Investments from './pages/Investments';
 import Invoices from './pages/Invoices';
 import Administration from './pages/Administration';
+import Todos from './pages/Todos';
 
 
 const queryClient = new QueryClient({
@@ -55,6 +56,7 @@ export default function App() {
               <Route path="invoices" element={<Invoices />} />
               <Route path="shopping" element={<Shopping />} />
               <Route path="investments" element={<Investments />} />
+              <Route path="todos" element={<Todos />} />
               <Route path="settings/company" element={<CompanySettings />} />
               <Route path="admin" element={<ProtectedRoute requireSuperuser><Administration /></ProtectedRoute>} />
             </Route>
