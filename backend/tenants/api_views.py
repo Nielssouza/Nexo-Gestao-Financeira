@@ -124,7 +124,7 @@ class TenantCompanyViewSet(viewsets.ModelViewSet):
     """Manage companies that belong to the authenticated user's tenant."""
     serializer_class = TenantCompanySerializer
     ordering = ("sequence_number", "name")
-    max_companies_per_tenant = 5
+    max_companies_per_tenant = 2
 
     def get_queryset(self):
         tenant = get_user_tenant(self.request.user, self.request)
@@ -142,7 +142,7 @@ class TenantCompanyViewSet(viewsets.ModelViewSet):
         require_tenant_admin(self.request.user, tenant)
         if TenantCompany.objects.filter(tenant=tenant).count() >= self.max_companies_per_tenant:
             raise ValidationError({
-                "detail": "Este tenant permite no maximo 5 cadastros de CPF/CNPJ."
+                "detail": f"Este tenant permite no maximo {self.max_companies_per_tenant} cadastros de CPF/CNPJ."
             })
         if serializer.validated_data.get("is_default"):
             TenantCompany.objects.filter(tenant=tenant, is_default=True).update(is_default=False)

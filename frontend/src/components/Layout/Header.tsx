@@ -98,8 +98,12 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
   }
 
   function displayName(name: string) {
-    if (!name || !name.includes('@')) return name;
-    return name.split('@')[0];
+    if (!name) return name;
+    const workspaceSuffix = ' Workspace';
+    if (name.endsWith(workspaceSuffix) && name.includes('@')) {
+      return name.slice(0, -workspaceSuffix.length);
+    }
+    return name;
   }
 
   const availableCompanies = isSuperuser ? allCompanies : tenantCompanies;
@@ -110,7 +114,7 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
     )) ||
     availableCompanies.find((company) => company.is_default) ||
     availableCompanies[0];
-  const activeCompanyName = activeCompany?.name || tenant?.name || 'Sem empresa';
+  const activeCompanyName = displayName(activeCompany?.name || tenant?.name || 'Sem empresa');
 
   function selectCompany(company: HeaderCompany) {
     const tenantId = getCompanyTenantId(company) || tenant?.id || null;

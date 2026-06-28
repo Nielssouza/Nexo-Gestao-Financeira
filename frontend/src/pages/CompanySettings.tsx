@@ -86,7 +86,7 @@ export default function CompanySettings() {
   const { data: nfseCredentials } = useQuery({ queryKey: ['nfseCredentials'], queryFn: fetchNfseCredentials });
   const nfseCredential = nfseCredentials?.[0];
   const { data: tenantCompanies = [] } = useQuery({ queryKey: ['tenantCompanies'], queryFn: fetchTenantCompanies });
-  const companyLimit = 5;
+  const companyLimit = 2;
   const companyLimitReached = tenantCompanies.length >= companyLimit;
 
   const closeModal = () => { setModal(null); setSuccessMsg(''); setErrorMsg(''); };
@@ -358,7 +358,7 @@ export default function CompanySettings() {
 
           {companyLimitReached && (
             <div style={{ background: 'var(--color-warning-muted)', color: 'var(--color-warning)', padding: '10px 14px', borderRadius: 'var(--radius-md)', fontSize: '0.85rem', marginBottom: 'var(--space-md)' }}>
-              Limite de 5 cadastros atingido.
+              Limite de {companyLimit} cadastros atingido.
             </div>
           )}
 
