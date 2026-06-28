@@ -5,6 +5,8 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
 
+from nexo.upload_paths import TenantPath
+
 
 class Tenant(models.Model):
     name = models.CharField("Nome", max_length=120)
@@ -26,7 +28,7 @@ class Tenant(models.Model):
     postal_code = models.CharField("CEP", max_length=9, blank=True)
     logo = models.ImageField(
         "Logo da empresa",
-        upload_to="tenant_logos/",
+        upload_to=TenantPath("logo", self_is_tenant=True),
         blank=True,
         null=True,
     )

@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Menu, Building2, ChevronDown, LogOut } from 'lucide-react';
-import { NavLink } from 'react-router-dom';
 import { fetchTenantCompanies } from '../../api/tenant';
 import { fetchAllCompanies, type AllCompanyItem } from '../../api/system';
 import { useAuth } from '../../contexts/AuthContext';
@@ -312,13 +311,7 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
                       </div>
                     </button>
                   ))}
-                  <NavLink
-                    to="/settings/company"
-                    className="tenant-dropdown-link"
-                    onClick={() => setTenantMenuOpen(false)}
-                  >
-                    Configurações
-                  </NavLink>
+
                 </>
               )}
             </div>
