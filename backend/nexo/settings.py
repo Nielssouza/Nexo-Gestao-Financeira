@@ -115,6 +115,7 @@ MIDDLEWARE = [
     "tenants.middleware.CurrentTenantMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "nexo.middleware.ApiOriginMiddleware",
     "nexo.middleware.ContentSecurityPolicyMiddleware",
 ] + (["django_browser_reload.middleware.BrowserReloadMiddleware"] if RUNSERVER else [])
 

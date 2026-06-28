@@ -7,6 +7,7 @@ const api = axios.create({
   withCredentials: true, // send httpOnly auth cookies automatically
   headers: {
     'Content-Type': 'application/json',
+    'X-Requested-With': 'XMLHttpRequest',
   },
 });
 
@@ -44,7 +45,10 @@ api.interceptors.response.use(
 
       try {
         // Refresh token is in httpOnly cookie — sent automatically with withCredentials
-        await axios.post(`${API_BASE_URL}/auth/token/refresh/`, {}, { withCredentials: true });
+        await axios.post(`${API_BASE_URL}/auth/token/refresh/`, {}, {
+          withCredentials: true,
+          headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        });
         return api(originalRequest);
       } catch {
         window.location.href = '/login';
