@@ -34,7 +34,7 @@ class DashboardView(APIView):
     """GET /api/v1/dashboard/?month=YYYY-MM"""
 
     def get(self, request):
-        tenant = getattr(request, "tenant", None) or get_user_tenant(request.user, request)
+        tenant = get_user_tenant(request.user, request)
         today = timezone.localdate()
 
         # Resolve selected month

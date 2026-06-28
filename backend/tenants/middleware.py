@@ -6,5 +6,8 @@ class CurrentTenantMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        request.tenant = get_request_tenant(request)
+        if request.path_info.startswith("/api/"):
+            request.tenant = None
+        else:
+            request.tenant = get_request_tenant(request)
         return self.get_response(request)

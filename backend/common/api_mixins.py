@@ -60,7 +60,12 @@ class TenantQuerySetMixin:
     tenant_field = "tenant"
 
     def get_tenant(self):
-        # Prefer middleware-resolved tenant (session-based), fallback to JWT.
+        # API requests are scoped by JWT plus X-Tenant-ID. Do not let a Django
+        # session tenant override the stateless API tenant selection.
+        requested_tenant_id = self.request.headers.get("X-Tenant-ID") or self.request.META.get("HTTP_X_TENANT_ID")
+        if requested_tenant_id:
+            return get_user_tenant(self.request.user, self.request)
+
         tenant = getattr(self.request, "tenant", None)
         if tenant:
             return tenant
