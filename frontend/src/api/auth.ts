@@ -5,11 +5,6 @@ export interface LoginPayload {
   password: string;
 }
 
-export interface TokenResponse {
-  access: string;
-  refresh: string;
-}
-
 export interface RegisterPayload {
   person_type: 'pf' | 'pj';
   name: string;
@@ -43,11 +38,9 @@ export interface MeResponse {
   tenant: Tenant | null;
 }
 
-export async function login(payload: LoginPayload): Promise<TokenResponse> {
-  const { data } = await api.post<TokenResponse>('/auth/token/', payload);
-  localStorage.setItem('access_token', data.access);
-  localStorage.setItem('refresh_token', data.refresh);
-  return data;
+export async function login(payload: LoginPayload): Promise<void> {
+  // Tokens are set as httpOnly cookies by the server — nothing stored client-side.
+  await api.post('/auth/token/', payload);
 }
 
 export async function register(payload: RegisterPayload): Promise<void> {
@@ -59,12 +52,16 @@ export async function fetchMe(): Promise<MeResponse> {
   return data;
 }
 
-export function logout(): void {
-  localStorage.removeItem('access_token');
-  localStorage.removeItem('refresh_token');
+export async function logout(): Promise<void> {
+  try {
+    await api.post('/auth/logout/');
+  } catch {
+    // best-effort: clear cookies server-side even if request fails
+  }
   window.location.href = '/login';
 }
 
+/** Always returns true — actual auth state is determined by fetchMe() success. */
 export function isAuthenticated(): boolean {
-  return !!localStorage.getItem('access_token');
+  return true;
 }

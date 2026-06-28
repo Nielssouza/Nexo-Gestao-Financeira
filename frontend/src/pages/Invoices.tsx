@@ -106,7 +106,7 @@ function buildPrintHtml(data: InvoicePrintData): string {
     : `<span style="color:#fff;font-size:22px;font-weight:900;line-height:1;">${(issuer?.name || 'N')[0].toUpperCase()}</span>`;
 
   const row = (label: string, value: string) =>
-    value ? `<tr><td style="color:#888;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:3px 0;white-space:nowrap;vertical-align:top;padding-right:20px;">${label}</td><td style="font-size:12px;padding:3px 0;">${value}</td></tr>` : '';
+    value ? `<tr><td style="color:#888;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:3px 0;white-space:nowrap;vertical-align:top;padding-right:20px;">${label}</td><td style="font-size:12px;padding:3px 0;">${escapeHtml(value)}</td></tr>` : '';
 
   const issuerRows = [
     row('CNPJ/CPF', issuer?.document || ''),
@@ -159,8 +159,8 @@ function buildPrintHtml(data: InvoicePrintData): string {
     ${logoBlock}
   </div>
   <div style="text-align:right">
-    <div style="font-size:22px;font-weight:900;letter-spacing:.01em">Fatura ${invoice.number_display}</div>
-    ${invoice.nfse_number ? `<div style="margin-top:4px;font-size:11px;color:#6b7280">NFS-e: ${invoice.nfse_number}</div>` : ''}
+    <div style="font-size:22px;font-weight:900;letter-spacing:.01em">Fatura ${escapeHtml(invoice.number_display)}</div>
+    ${invoice.nfse_number ? `<div style="margin-top:4px;font-size:11px;color:#6b7280">NFS-e: ${escapeHtml(invoice.nfse_number)}</div>` : ''}
     <div style="margin-top:6px;display:inline-block;padding:3px 12px;background:#111;color:#fff;font-size:10px;font-weight:800;letter-spacing:.1em">${statusLabel}</div>
   </div>
 </div>
@@ -183,7 +183,7 @@ function buildPrintHtml(data: InvoicePrintData): string {
 
 <div style="margin-bottom:20px">
   <div class="section-label">Prestador do Serviço (Emissor)</div>
-  <div class="company-name">${issuerName}</div>
+  <div class="company-name">${escapeHtml(issuerName)}</div>
   <table style="border-collapse:collapse"><tbody>${issuerRows}</tbody></table>
 </div>
 
@@ -191,7 +191,7 @@ function buildPrintHtml(data: InvoicePrintData): string {
 
 <div style="margin-bottom:20px">
   <div class="section-label">Tomador do Serviço (Cliente)</div>
-  <div class="company-name">${invoice.client_name}</div>
+  <div class="company-name">${escapeHtml(invoice.client_name)}</div>
   <table style="border-collapse:collapse"><tbody>${clientRows}</tbody></table>
 </div>
 
@@ -199,8 +199,8 @@ function buildPrintHtml(data: InvoicePrintData): string {
 
 <div style="margin-bottom:20px">
   <div class="section-label">Discriminação dos Serviços</div>
-  ${invoice.service_code ? `<div class="service-header">CÓDIGO DO SERVIÇO: ${invoice.service_code}${service_code_description ? ` — ${service_code_description.toUpperCase()}` : ''}</div>` : ''}
-  <div class="service-body">${invoice.service_description || ''}</div>
+  ${invoice.service_code ? `<div class="service-header">CÓDIGO DO SERVIÇO: ${escapeHtml(invoice.service_code)}${service_code_description ? ` — ${escapeHtml(service_code_description).toUpperCase()}` : ''}</div>` : ''}
+  <div class="service-body">${escapeHtml(invoice.service_description || '')}</div>
 </div>
 
 <hr>

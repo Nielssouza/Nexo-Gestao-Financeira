@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { fetchMe, isAuthenticated, logout as doLogout, type MeResponse } from '../api/auth';
+import { fetchMe, logout as doLogout, type MeResponse } from '../api/auth';
 
 interface AuthContextType {
   user: MeResponse['user'] | null;
@@ -25,13 +25,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   const refresh = async () => {
-    if (!isAuthenticated()) {
-      setUser(null);
-      setTenant(null);
-      setIsLoading(false);
-      return;
-    }
-
     try {
       const data = await fetchMe();
       setUser(data.user);

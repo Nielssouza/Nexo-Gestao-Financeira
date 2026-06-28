@@ -16,6 +16,10 @@ def get_user_tenant(user, request=None):
         requested_tenant_id = request.headers.get("X-Tenant-ID") or request.META.get("HTTP_X_TENANT_ID")
 
     if requested_tenant_id:
+        try:
+            requested_tenant_id = int(requested_tenant_id)
+        except (ValueError, TypeError):
+            raise PermissionDenied("X-Tenant-ID inválido.")
         tenant = Tenant.objects.filter(pk=requested_tenant_id, is_active=True).first()
         if not tenant:
             raise PermissionDenied("Tenant selecionado nao encontrado.")

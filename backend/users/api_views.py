@@ -4,7 +4,8 @@ from django.shortcuts import get_object_or_404
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from common.api_mixins import get_user_tenant
 from common.throttles import LoginThrottle
@@ -13,6 +14,43 @@ from users.serializers import PendingUserSerializer, RegisterSerializer, UserSer
 
 User = get_user_model()
 
+_COOKIE_SECURE = not getattr(settings, "DEBUG", False)
+_ACCESS_COOKIE = "access_token"
+_REFRESH_COOKIE = "refresh_token"
+
+
+def _set_auth_cookies(response, access: str, refresh: str | None = None):
+    response.set_cookie(
+        _ACCESS_COOKIE, access,
+        httponly=True, secure=_COOKIE_SECURE, samesite="Lax",
+        max_age=30 * 60,
+    )
+    if refresh is not None:
+        response.set_cookie(
+            _REFRESH_COOKIE, refresh,
+            httponly=True, secure=_COOKIE_SECURE, samesite="Lax",
+            max_age=7 * 24 * 60 * 60,
+        )
+
+
+def _clear_auth_cookies(response):
+    response.delete_cookie(_ACCESS_COOKIE)
+    response.delete_cookie(_REFRESH_COOKIE)
+
+
+class CookieJWTAuthentication(JWTAuthentication):
+    """JWTAuthentication that falls back to reading the access token from an httpOnly cookie."""
+
+    def authenticate(self, request):
+        # Prefer Authorization header when present
+        if self.get_header(request) is not None:
+            return super().authenticate(request)
+        raw_token = request.COOKIES.get(_ACCESS_COOKIE)
+        if raw_token is None:
+            return None
+        validated_token = self.get_validated_token(raw_token)
+        return self.get_user(validated_token), validated_token
+
 
 class IsSuperuser(permissions.BasePermission):
     def has_permission(self, request, view):
@@ -20,8 +58,36 @@ class IsSuperuser(permissions.BasePermission):
 
 
 class RateLimitedTokenObtainPairView(TokenObtainPairView):
-    """JWT login with a 10 attempts/minute per-IP rate limit."""
+    """JWT login: rate-limited, sets tokens as httpOnly cookies."""
     throttle_classes = [LoginThrottle]
+
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        if response.status_code == 200:
+            _set_auth_cookies(response, response.data["access"], response.data["refresh"])
+            response.data = {"detail": "Login realizado com sucesso."}
+        return response
+
+
+class CookieTokenRefreshView(TokenRefreshView):
+    """Token refresh: reads refresh token from cookie, sets new tokens as cookies."""
+
+    def post(self, request, *args, **kwargs):
+        if "refresh" not in request.data:
+            refresh = request.COOKIES.get(_REFRESH_COOKIE)
+            if refresh:
+                data = request.data.copy()
+                data["refresh"] = refresh
+                request._full_data = data
+        response = super().post(request, *args, **kwargs)
+        if response.status_code == 200:
+            _set_auth_cookies(
+                response,
+                response.data["access"],
+                response.data.get("refresh"),
+            )
+            response.data = {"detail": "Token renovado."}
+        return response
 
 
 class MeView(APIView):
@@ -95,28 +161,20 @@ class ApproveUserView(APIView):
 
 
 class LogoutView(APIView):
-    """
-    POST /api/v1/auth/logout/ invalidates the refresh token through the blacklist.
-    Requires: { "refresh": "<refresh_token>" }
-    """
+    """POST /api/v1/auth/logout/ — blacklists refresh token and clears auth cookies."""
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        refresh_token = request.data.get("refresh")
-        if not refresh_token:
-            return Response(
-                {"detail": "Refresh token obrigatorio."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        try:
-            from rest_framework_simplejwt.tokens import RefreshToken
-            token = RefreshToken(refresh_token)
-            token.blacklist()
-        except Exception:
-            return Response(
-                {"detail": "Token invalido ou ja expirado."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        return Response({"detail": "Logout realizado com sucesso."}, status=status.HTTP_200_OK)
+        from rest_framework_simplejwt.tokens import RefreshToken
+        refresh_token = request.data.get("refresh") or request.COOKIES.get(_REFRESH_COOKIE)
+        if refresh_token:
+            try:
+                RefreshToken(refresh_token).blacklist()
+            except Exception:
+                pass
+        response = Response({"detail": "Logout realizado com sucesso."}, status=status.HTTP_200_OK)
+        _clear_auth_cookies(response)
+        return response
 
 
 class SystemStatsView(APIView):
@@ -242,28 +300,14 @@ class RestoreBackupView(APIView):
                     tmp_path
                 ]
                 result = subprocess.run(cmd, env=env, capture_output=True, text=True, encoding="utf-8", errors="replace")
-                
-                # Fallback to psql se pg_restore falhar e for script puro
-                if result.returncode != 0:
-                    cmd_fallback = [
-                        psql_bin,
-                        "-U", db_user,
-                        "-h", db_host,
-                        "-p", str(db_port),
-                        "-d", db_name,
-                        "-f", tmp_path
-                    ]
-                    result_fallback = subprocess.run(cmd_fallback, env=env, capture_output=True, text=True, encoding="utf-8", errors="replace")
-                    if result_fallback.returncode == 0 or "invalid command" not in result_fallback.stderr:
-                        result = result_fallback
-            
+
             if result.returncode == 0:
                 return Response({"detail": "Backup restaurado com sucesso!"}, status=status.HTTP_200_OK)
             else:
-                return Response({
-                    "detail": "Erro ao restaurar backup.",
-                    "error": result.stderr or result.stdout
-                }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return Response(
+                    {"detail": "Erro ao restaurar backup. Verifique se o arquivo é um dump válido do pg_dump."},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
                 
         except Exception as e:
             return Response({"detail": f"Erro interno: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

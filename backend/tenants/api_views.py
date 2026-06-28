@@ -196,6 +196,13 @@ class TenantInviteUserView(APIView):
         if not name or not email or not password:
             return Response({"detail": "Nome, e-mail e senha são obrigatórios."}, status=status.HTTP_400_BAD_REQUEST)
 
+        from django.contrib.auth.password_validation import validate_password
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        try:
+            validate_password(password)
+        except DjangoValidationError as exc:
+            return Response({"detail": " ".join(exc.messages)}, status=status.HTTP_400_BAD_REQUEST)
+
         if role not in (TenantMembership.Role.OWNER, TenantMembership.Role.ADMIN, TenantMembership.Role.MEMBER):
             return Response({"detail": "Papel inválido."}, status=status.HTTP_400_BAD_REQUEST)
 

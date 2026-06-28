@@ -4,11 +4,28 @@ from rest_framework import serializers
 
 from tenants.models import NfseCredential, Tenant, TenantCompany, TenantMembership
 
+_LOGO_MAX_BYTES = 5 * 1024 * 1024  # 5 MB
+_LOGO_ALLOWED_EXTENSIONS = {"jpg", "jpeg", "png", "webp"}
+
+
+def validate_logo_file(file):
+    if file is None:
+        return file
+    ext = (file.name.rsplit(".", 1)[-1].lower()) if "." in file.name else ""
+    if ext not in _LOGO_ALLOWED_EXTENSIONS:
+        raise serializers.ValidationError(
+            f"Formato não permitido. Use: {', '.join(sorted(_LOGO_ALLOWED_EXTENSIONS))}."
+        )
+    if file.size > _LOGO_MAX_BYTES:
+        raise serializers.ValidationError("A logo deve ter no máximo 5 MB.")
+    return file
+
 
 class TenantSerializer(serializers.ModelSerializer):
     formatted_address_line = serializers.CharField(read_only=True)
     formatted_city_state = serializers.CharField(read_only=True)
     full_address = serializers.CharField(read_only=True)
+    logo = serializers.ImageField(required=False, allow_null=True, validators=[validate_logo_file])
 
     class Meta:
         model = Tenant
@@ -88,14 +105,6 @@ class TenantCompanySerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         )
-
-    def validate_document(self, value):
-        digits = re.sub(r"\D", "", value or "")
-        if not digits:
-            raise serializers.ValidationError("Informe CPF ou CNPJ.")
-        if len(digits) not in (11, 14):
-            raise serializers.ValidationError("Informe CPF com 11 digitos ou CNPJ com 14 digitos.")
-        return digits
 
     def validate_sequence_number(self, value):
         if not value.isdigit():
