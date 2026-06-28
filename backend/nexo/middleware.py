@@ -39,12 +39,14 @@ class ApiOriginMiddleware:
         if x_requested.lower() != "xmlhttprequest":
             return "Acesso direto à API não permitido."
 
-        # Se vier Origin, valida que bate com o host do servidor
+        # Se vier Origin, valida contra o próprio servidor OU origens CORS autorizadas
         if origin:
             from urllib.parse import urlparse
+            from django.conf import settings as _settings
             origin_host = urlparse(origin).netloc
-            server_host = request.get_host()  # inclui porta se diferente de 80/443
-            if origin_host != server_host:
+            server_host = request.get_host()
+            allowed_origins = getattr(_settings, "CORS_ALLOWED_ORIGINS", [])
+            if origin_host != server_host and origin not in allowed_origins:
                 return "Origin não autorizada."
 
         return None
