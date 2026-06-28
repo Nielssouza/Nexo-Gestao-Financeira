@@ -371,7 +371,7 @@ export default function Invoices() {
   const [guideData, setGuideData] = useState<InvoiceNfseGuide | null>(null);
   const [statusData, setStatusData] = useState<{ invoice: Invoice; status: InvoiceNfseStatus } | null>(null);
   const [cancelTarget, setCancelTarget] = useState<Invoice | null>(null);
-  const [filtersOpen, setFiltersOpen] = useState(true);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const [filters, setFilters] = useState<InvoiceFilters>({
     status: '',

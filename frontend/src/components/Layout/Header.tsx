@@ -15,6 +15,18 @@ interface HeaderProps {
 const ACTIVE_COMPANY_STORAGE_KEY = 'nexo.activeCompanyId';
 const ACTIVE_TENANT_STORAGE_KEY = 'nexo.activeTenantId';
 
+type HeaderCompany = {
+  id: number;
+  name: string;
+  tenant?: number;
+  tenant_id?: number;
+  is_default?: boolean;
+};
+
+function getCompanyTenantId(company: HeaderCompany | null | undefined) {
+  return company?.tenant_id || company?.tenant || null;
+}
+
 export default function Header({ title, onMenuClick, isMobile = false }: HeaderProps) {
   const { user, tenant, logout, refresh } = useAuth();
   const queryClient = useQueryClient();
@@ -23,6 +35,14 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
   const [activeCompanyId, setActiveCompanyId] = useState<number | null>(() => {
     try {
       const value = localStorage.getItem(ACTIVE_COMPANY_STORAGE_KEY);
+      return value ? Number(value) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [activeTenantId, setActiveTenantId] = useState<number | null>(() => {
+    try {
+      const value = localStorage.getItem(ACTIVE_TENANT_STORAGE_KEY);
       return value ? Number(value) : null;
     } catch {
       return null;
@@ -78,14 +98,18 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
 
   const availableCompanies = isSuperuser ? allCompanies : tenantCompanies;
   const activeCompany =
-    availableCompanies.find((company) => company.id === activeCompanyId) ||
+    availableCompanies.find((company) => (
+      company.id === activeCompanyId &&
+      (!activeTenantId || getCompanyTenantId(company) === activeTenantId)
+    )) ||
     availableCompanies.find((company) => company.is_default) ||
     availableCompanies[0];
   const activeCompanyName = activeCompany?.name || tenant?.name || 'Sem empresa';
 
-  function selectCompany(company: { id: number; name: string; tenant?: number; tenant_id?: number }) {
-    const tenantId = company.tenant_id || company.tenant || tenant?.id;
+  function selectCompany(company: HeaderCompany) {
+    const tenantId = getCompanyTenantId(company) || tenant?.id || null;
     setActiveCompanyId(company.id);
+    setActiveTenantId(tenantId);
     try {
       localStorage.setItem(ACTIVE_COMPANY_STORAGE_KEY, String(company.id));
       if (tenantId) {
@@ -94,9 +118,9 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
       }
     } catch {}
     window.dispatchEvent(new CustomEvent('nexo:company-change', { detail: { companyId: company.id, tenantId } }));
+    setTenantMenuOpen(false);
     queryClient.invalidateQueries();
     void refresh();
-    setTenantMenuOpen(false);
   }
 
   useEffect(() => {
@@ -114,6 +138,7 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
     }
     try {
       localStorage.setItem(ACTIVE_TENANT_STORAGE_KEY, String(tenant.id));
+      setActiveTenantId(tenant.id);
       const storedCompanyId = localStorage.getItem(`nexo.activeCompanyId.${tenant.id}`);
       if (storedCompanyId) {
         localStorage.setItem(ACTIVE_COMPANY_STORAGE_KEY, storedCompanyId);
@@ -145,19 +170,23 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
 
   useEffect(() => {
     if (availableCompanies.length === 0) return;
-    if (activeCompanyId && availableCompanies.some((company) => company.id === activeCompanyId)) return;
+    if (activeCompanyId && availableCompanies.some((company) => (
+      company.id === activeCompanyId &&
+      (!activeTenantId || getCompanyTenantId(company) === activeTenantId)
+    ))) return;
 
     const nextCompany = availableCompanies.find((company) => company.is_default) || availableCompanies[0];
+    const nextTenantId = getCompanyTenantId(nextCompany);
     setActiveCompanyId(nextCompany.id);
+    setActiveTenantId(nextTenantId);
     try {
       localStorage.setItem(ACTIVE_COMPANY_STORAGE_KEY, String(nextCompany.id));
-      const tenantId = 'tenant_id' in nextCompany ? nextCompany.tenant_id : nextCompany.tenant;
-      if (tenantId) {
-        localStorage.setItem(ACTIVE_TENANT_STORAGE_KEY, String(tenantId));
-        localStorage.setItem(`nexo.activeCompanyId.${tenantId}`, String(nextCompany.id));
+      if (nextTenantId) {
+        localStorage.setItem(ACTIVE_TENANT_STORAGE_KEY, String(nextTenantId));
+        localStorage.setItem(`nexo.activeCompanyId.${nextTenantId}`, String(nextCompany.id));
       }
     } catch {}
-  }, [activeCompanyId, availableCompanies, tenant?.id]);
+  }, [activeCompanyId, activeTenantId, availableCompanies, tenant?.id]);
 
   return (
     <header className="app-header">
@@ -208,7 +237,12 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
                         <button
                           key={company.id}
                           type="button"
-                          className={`tenant-dropdown-item ${company.id === activeCompany?.id ? 'active' : ''}`}
+                          className={`tenant-dropdown-item ${
+                            company.id === activeCompany?.id &&
+                            getCompanyTenantId(company) === getCompanyTenantId(activeCompany)
+                              ? 'active'
+                              : ''
+                          }`}
                           onClick={() => selectCompany(company)}
                         >
                           <div className="tenant-dropdown-main">
@@ -233,7 +267,12 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
                     <button
                       key={company.id}
                       type="button"
-                      className={`tenant-dropdown-item ${company.id === activeCompany?.id ? 'active' : ''}`}
+                      className={`tenant-dropdown-item ${
+                        company.id === activeCompany?.id &&
+                        getCompanyTenantId(company) === getCompanyTenantId(activeCompany)
+                          ? 'active'
+                          : ''
+                      }`}
                       onClick={() => selectCompany(company)}
                     >
                       <div className="tenant-dropdown-main">
