@@ -34,6 +34,7 @@ export interface Tenant {
   slug: string;
   person_type: 'pf' | 'pj';
   person_type_display: string;
+  created_at: string;
   role: 'owner' | 'admin' | 'member' | null;
 }
 

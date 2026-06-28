@@ -106,6 +106,25 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
     return name;
   }
 
+  function roleLabel(role?: string | null) {
+    if (user?.is_superuser) return 'Superadmin';
+    if (role === 'owner') return 'Owner';
+    if (role === 'admin') return 'Admin';
+    if (role === 'member') return 'Membro';
+    return 'Sem nível';
+  }
+
+  function tenantCodeFromValue(value?: string) {
+    if (!value) return tenant?.id ? `#${String(tenant.id).padStart(4, '0')}` : 'Não informado';
+    if (/^\d{8}$/.test(value)) return value;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return tenant?.id ? `#${String(tenant.id).padStart(4, '0')}` : 'Não informado';
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}${month}${year}`;
+  }
+
   const availableCompanies = isSuperuser ? allCompanies : tenantCompanies;
   const activeCompany =
     availableCompanies.find((company) => (
@@ -115,6 +134,9 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
     availableCompanies.find((company) => company.is_default) ||
     availableCompanies[0];
   const activeCompanyName = displayName(activeCompany?.name || tenant?.name || 'Sem empresa');
+  const tenantCode = isSuperuser
+    ? tenantCodeFromValue(allCompanies.find((company) => getCompanyTenantId(company) === activeTenantId)?.tenant_code)
+    : tenantCodeFromValue(tenant?.created_at);
 
   function selectCompany(company: HeaderCompany) {
     const tenantId = getCompanyTenantId(company) || tenant?.id || null;
@@ -331,7 +353,7 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
               position: 'absolute',
               top: 'calc(100% + 0.5rem)',
               right: 0,
-              minWidth: '11.25rem',
+              minWidth: '16rem',
               maxWidth: 'calc(100vw - 1.5rem)',
               background: 'var(--color-bg-card)',
               border: '1px solid var(--color-border-hover)',
@@ -348,7 +370,7 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
                 textTransform: 'uppercase',
                 color: 'var(--color-text-secondary)',
               }}>
-                {tenantLabel} {tenant?.id ? `#${String(tenant.id).padStart(4, '0')}` : ''}
+                Tenant {tenantCode}
               </div>
 
               <div style={{
@@ -385,6 +407,52 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
                     {user.email}
                   </div>
                 )}
+                <div style={{ marginTop: '0.65rem' }}>
+                  <div style={{
+                    fontSize: '0.7rem',
+                    fontWeight: 700,
+                    letterSpacing: '0.05em',
+                    textTransform: 'uppercase',
+                    color: 'var(--color-text-muted)',
+                    marginBottom: '0.22rem',
+                  }}>
+                    Empresa
+                  </div>
+                  <div style={{
+                    fontSize: '0.82rem',
+                    lineHeight: 1.25,
+                    fontWeight: 700,
+                    color: 'var(--color-text-primary)',
+                    overflowWrap: 'anywhere',
+                  }}>
+                    {activeCompanyName}
+                  </div>
+                </div>
+                <div style={{ marginTop: '0.65rem' }}>
+                  <div style={{
+                    fontSize: '0.7rem',
+                    fontWeight: 700,
+                    letterSpacing: '0.05em',
+                    textTransform: 'uppercase',
+                    color: 'var(--color-text-muted)',
+                    marginBottom: '0.28rem',
+                  }}>
+                    Nível de acesso
+                  </div>
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    minHeight: 22,
+                    padding: '0 0.45rem',
+                    borderRadius: 'var(--radius-full)',
+                    background: 'var(--color-accent-muted)',
+                    color: 'var(--color-accent)',
+                    fontSize: '0.72rem',
+                    fontWeight: 800,
+                  }}>
+                    {roleLabel(tenant?.role)}
+                  </span>
+                </div>
               </div>
 
               <button

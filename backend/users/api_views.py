@@ -40,6 +40,7 @@ class MeView(APIView):
             "slug": tenant.slug,
             "person_type": tenant.person_type,
             "person_type_display": tenant.get_person_type_display(),
+            "created_at": tenant.created_at,
             "role": membership.role if membership else None,
         } if tenant else None
 
