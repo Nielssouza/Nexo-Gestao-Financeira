@@ -71,6 +71,11 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
     return value || '';
   }
 
+  function displayName(name: string) {
+    if (!name || !name.includes('@')) return name;
+    return name.split('@')[0];
+  }
+
   const availableCompanies = isSuperuser ? allCompanies : tenantCompanies;
   const activeCompany =
     availableCompanies.find((company) => company.id === activeCompanyId) ||
@@ -191,7 +196,14 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
                     <div className="tenant-dropdown-empty">Nenhuma empresa cadastrada.</div>
                   ) : allCompaniesByTenant.map((group) => (
                     <div key={group.tenant_name}>
-                      <div className="tenant-dropdown-group">{group.tenant_name}</div>
+                      <div className="tenant-dropdown-group">
+                        {displayName(group.tenant_name)}
+                        {group.tenant_name.includes('@') && (
+                          <span style={{ fontWeight: 400, opacity: 0.6, marginLeft: 4 }}>
+                            @{group.tenant_name.split('@')[1]}
+                          </span>
+                        )}
+                      </div>
                       {group.companies.map((company) => (
                         <button
                           key={company.id}
@@ -201,7 +213,7 @@ export default function Header({ title, onMenuClick, isMobile = false }: HeaderP
                         >
                           <div className="tenant-dropdown-main">
                             <span className="tenant-dropdown-seq">{company.sequence_number}</span>
-                            <span className="tenant-dropdown-name">{company.name}</span>
+                            <span className="tenant-dropdown-name">{displayName(company.name)}</span>
                             {company.is_default && <span className="tenant-dropdown-badge">Padrão</span>}
                           </div>
                           <div className="tenant-dropdown-doc">

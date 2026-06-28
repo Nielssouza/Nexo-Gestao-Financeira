@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, type ReactNode } from 'react';
+import { useState, useRef, useEffect, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format, parseISO } from 'date-fns';
@@ -255,14 +255,57 @@ function ActionsDropdown({ invoice, onEdit, onPay, onPrint, onGuide, onStatus, o
     return () => document.removeEventListener('mousedown', handle);
   }, [open]);
 
+  const getMenuStyle = (): CSSProperties => {
+    const rect = ref.current?.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const isMobile = viewportWidth < 769;
+    const width = isMobile ? 150 : 168;
+    const bottomSafeArea = isMobile ? 104 : 12;
+    const visibleItems = [
+      invoice.status === 'issued',
+      true,
+      true,
+      invoice.status === 'issued',
+      Boolean(invoice.status === 'issued' && invoice.nfse_status && invoice.nfse_status !== 'nfse_issued'),
+      invoice.status === 'issued' && invoice.nfse_status !== 'nfse_issued',
+      invoice.status !== 'cancelled',
+    ].filter(Boolean).length;
+    const estimatedHeight = Math.min(visibleItems * 36 + 8, viewportHeight - bottomSafeArea - 16);
+
+    if (!rect) {
+      return { position: 'fixed', top: 8, left: 8, width };
+    }
+
+    const availableBelow = viewportHeight - rect.bottom - bottomSafeArea;
+    const openDownTop = rect.bottom + 4;
+    const openUpTop = rect.top - estimatedHeight - 4;
+    const top = Math.max(
+      8,
+      Math.min(
+        availableBelow >= estimatedHeight ? openDownTop : openUpTop,
+        viewportHeight - estimatedHeight - bottomSafeArea,
+      ),
+    );
+    const left = Math.max(8, Math.min(rect.right - width, viewportWidth - width - 8));
+
+    return {
+      position: 'fixed',
+      top,
+      left,
+      width,
+      maxHeight: `calc(100vh - ${bottomSafeArea + 16}px)`,
+    };
+  };
+
   const item = (label: string, icon: ReactNode, onClick: () => void, danger = false) => (
     <button
       type="button"
       onClick={() => { setOpen(false); onClick(); }}
       style={{
         display: 'flex', alignItems: 'center', gap: 10, width: '100%',
-        padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer',
-        fontSize: '0.82rem', fontWeight: 500, textAlign: 'left',
+        padding: '8px 12px', background: 'none', border: 'none', cursor: 'pointer',
+        fontSize: '0.8rem', fontWeight: 500, textAlign: 'left',
         color: danger ? 'var(--color-danger)' : 'var(--color-text-primary)',
       }}
       onMouseEnter={(e) => (e.currentTarget.style.background = danger ? 'var(--color-danger-muted)' : 'rgba(255,255,255,0.05)')}
@@ -279,15 +322,13 @@ function ActionsDropdown({ invoice, onEdit, onPay, onPrint, onGuide, onStatus, o
       </button>
       {open && createPortal(
         <div ref={menuRef} style={{
-          position: 'fixed',
-          top: ref.current ? ref.current.getBoundingClientRect().bottom + 4 : 0,
-          left: ref.current ? Math.min(ref.current.getBoundingClientRect().right - 160, window.innerWidth - 170) : 0,
-          width: 160, zIndex: 999,
+          ...getMenuStyle(),
+          zIndex: 999,
           background: 'var(--color-bg-card)',
           border: '1px solid var(--color-border-hover)',
           borderRadius: 'var(--radius-md)',
           boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
-          overflow: 'hidden',
+          overflowY: 'auto',
         }}>
           {invoice.status === 'issued' && item('Marcar como Paga', <CheckCircle2 size={14} style={{ color: 'var(--color-success)' }} />, onPay)}
           {item('Editar', <Edit2 size={14} />, onEdit)}
@@ -329,6 +370,7 @@ export default function Invoices() {
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [guideData, setGuideData] = useState<InvoiceNfseGuide | null>(null);
   const [statusData, setStatusData] = useState<{ invoice: Invoice; status: InvoiceNfseStatus } | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<Invoice | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(true);
 
   const [filters, setFilters] = useState<InvoiceFilters>({
@@ -370,6 +412,7 @@ export default function Invoices() {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      setCancelTarget(null);
     },
   });
 
@@ -424,6 +467,7 @@ export default function Invoices() {
 
   return (
     <div className="animate-fade-in">
+      <style>{`input[type="date"]::-webkit-calendar-picker-indicator { filter: brightness(0) invert(1); cursor: pointer; }`}</style>
       <div className="page-header">
         <button className="btn btn-primary" onClick={handleOpenNew}>
           <Plus size={18} /> Nova Fatura
@@ -568,7 +612,7 @@ export default function Invoices() {
                         onGuide={() => handleGuide(inv)}
                         onStatus={() => handleStatus(inv)}
                         onEmitNfse={() => emitNfseMutation.mutate(inv.id)}
-                        onCancel={() => { if (window.confirm('Cancelar fatura?')) cancelMutation.mutate(inv.id); }}
+                        onCancel={() => setCancelTarget(inv)}
                       />
                     </td>
                   </tr>
@@ -581,6 +625,40 @@ export default function Invoices() {
 
       {modalOpen && (
         <InvoiceModal invoice={editingInvoice} isOpen={modalOpen} onClose={() => setModalOpen(false)} />
+      )}
+
+      {cancelTarget && (
+        <DataModal title="Cancelar fatura" onClose={() => setCancelTarget(null)}>
+          <div style={{ display: 'grid', gap: 'var(--space-lg)' }}>
+            <div>
+              <p style={{ color: 'var(--color-text-primary)', fontSize: '0.95rem', fontWeight: 600 }}>
+                Cancelar fatura {cancelTarget.number_display}?
+              </p>
+              <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem', marginTop: 6 }}>
+                Essa ação altera o status da fatura e remove o lançamento financeiro pendente vinculado, se existir.
+              </p>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-sm)' }}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setCancelTarget(null)}
+                disabled={cancelMutation.isPending}
+              >
+                Voltar
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger"
+                onClick={() => cancelMutation.mutate(cancelTarget.id)}
+                disabled={cancelMutation.isPending}
+              >
+                <Ban size={16} />
+                {cancelMutation.isPending ? 'Cancelando...' : 'Cancelar fatura'}
+              </button>
+            </div>
+          </div>
+        </DataModal>
       )}
 
       {guideData && (
