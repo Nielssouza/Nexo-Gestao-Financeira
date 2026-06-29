@@ -7,6 +7,21 @@ import { fetchCategories, type Category } from '../api/categories';
 
 const GAP = { display: 'flex', flexDirection: 'column' as const, gap: '1.25rem' };
 type RecurrenceType = CreateTransactionPayload['recurrence_type'];
+type EditScope = 'current' | 'all';
+
+function getApiErrorMessage(err: any): string {
+  const data = err?.response?.data;
+  if (!data) return err?.message || 'Erro ao salvar transação';
+  if (typeof data === 'string') return data;
+  if (data.detail) return data.detail;
+  if (data.message) return data.message;
+
+  const fieldMessages = Object.entries(data).map(([field, value]) => {
+    const message = Array.isArray(value) ? value.join(' ') : String(value);
+    return `${field}: ${message}`;
+  });
+  return fieldMessages.join(' ') || err?.message || 'Erro ao salvar transação';
+}
 
 export default function TransactionForm() {
   const { id } = useParams<{ id: string }>();
@@ -41,7 +56,7 @@ export default function TransactionForm() {
   const [isIgnored, setIsIgnored] = useState(false);
   const [recurrenceType, setRecurrenceType] = useState<RecurrenceType>('once');
   const [installmentCount, setInstallmentCount] = useState<number | string>('');
-  const [scope, setScope] = useState<'this' | 'future'>('this');
+  const [scope, setScope] = useState<EditScope>('current');
 
   useEffect(() => {
     if (transaction) {
@@ -102,7 +117,7 @@ export default function TransactionForm() {
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       navigate('/transactions');
     } catch (err: any) {
-      setError(err.response?.data?.message || err.message || 'Erro ao salvar transação');
+      setError(getApiErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -237,11 +252,11 @@ export default function TransactionForm() {
             <label className="label" style={{ marginBottom: 10 }}>Aplicar alteração em</label>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {[
-                { value: 'this', label: 'Somente nesta transação' },
-                { value: 'future', label: 'Nesta e nas próximas' },
+                { value: 'current', label: 'Somente nesta transação' },
+                { value: 'all', label: 'Nesta e nas próximas' },
               ].map(opt => (
                 <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '0.875rem', color: 'var(--color-text-secondary)' }}>
-                  <input type="radio" name="scope" value={opt.value} checked={scope === opt.value} onChange={() => setScope(opt.value as any)} style={{ accentColor: 'var(--color-accent)' }} />
+                  <input type="radio" name="scope" value={opt.value} checked={scope === opt.value} onChange={() => setScope(opt.value as EditScope)} style={{ accentColor: 'var(--color-accent)' }} />
                   {opt.label}
                 </label>
               ))}
