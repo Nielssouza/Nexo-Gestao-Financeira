@@ -22,6 +22,7 @@ function renderProtected(requireSuperuser = false) {
           }
         />
         <Route path="/login" element={<div>Login</div>} />
+        <Route path="/dashboard" element={<div>Dashboard</div>} />
         <Route path="/" element={<div>Inicio</div>} />
       </Routes>
     </MemoryRouter>
@@ -66,7 +67,7 @@ describe('ProtectedRoute', () => {
 
     renderProtected(true);
 
-    expect(screen.getByText('Inicio')).toBeInTheDocument();
+    expect(screen.getByText('Dashboard')).toBeInTheDocument();
   });
 
   it('renders protected content for allowed users', () => {

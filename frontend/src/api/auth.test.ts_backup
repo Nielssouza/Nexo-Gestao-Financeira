@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fetchMe, login, logout, register } from './auth';
+import { fetchMe, isAuthenticated, login, logout, register } from './auth';
 
 const apiMock = vi.hoisted(() => ({
   get: vi.fn(),
@@ -15,19 +15,23 @@ describe('auth api', () => {
     localStorage.clear();
     apiMock.get.mockReset();
     apiMock.post.mockReset();
+    window.history.replaceState({}, '', '/');
   });
 
-  it('calls the login endpoint', async () => {
+  it('stores tokens when login succeeds', async () => {
     apiMock.post.mockResolvedValueOnce({
-      data: { detail: 'Login realizado com sucesso.' },
+      data: { access: 'access-token', refresh: 'refresh-token' },
     });
 
-    await login({ username: 'user@example.com', password: 'secret' });
+    const result = await login({ username: 'user@example.com', password: 'secret' });
 
     expect(apiMock.post).toHaveBeenCalledWith('/auth/token/', {
       username: 'user@example.com',
       password: 'secret',
     });
+    expect(result).toEqual({ access: 'access-token', refresh: 'refresh-token' });
+    expect(localStorage.getItem('access_token')).toBe('access-token');
+    expect(localStorage.getItem('refresh_token')).toBe('refresh-token');
   });
 
   it('fetches the authenticated user profile', async () => {
@@ -45,7 +49,7 @@ describe('auth api', () => {
         name: 'Empresa',
         slug: 'empresa',
         person_type: 'pj',
-        person_type_display: 'Pessoa Jurídica',
+        person_type_display: 'Pessoa JurÃ­dica',
         role: 'owner',
       },
     };
@@ -55,7 +59,7 @@ describe('auth api', () => {
     expect(apiMock.get).toHaveBeenCalledWith('/me/');
   });
 
-  it('registers a pending user', async () => {
+  it('registers a pending user without storing tokens', async () => {
     apiMock.post.mockResolvedValueOnce({ data: {} });
 
     await register({
@@ -75,21 +79,18 @@ describe('auth api', () => {
       password: 'Strong-pass-123',
       password_confirm: 'Strong-pass-123',
     });
+    expect(isAuthenticated()).toBe(false);
   });
 
-  it('calls logout endpoint and redirects', async () => {
-    const originalLocation = window.location;
-    // mock window.location.href
-    delete (window as any).location;
-    window.location = { ...originalLocation, href: '' } as any;
+  it('clears tokens and redirects on logout', () => {
+    localStorage.setItem('access_token', 'access-token');
+    localStorage.setItem('refresh_token', 'refresh-token');
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    apiMock.post.mockResolvedValueOnce({});
-    await logout();
+    logout();
 
-    expect(apiMock.post).toHaveBeenCalledWith('/auth/logout/');
-    expect(window.location.href).toBe('/login');
-
-    // restore
-    window.location = originalLocation;
+    expect(localStorage.getItem('access_token')).toBeNull();
+    expect(localStorage.getItem('refresh_token')).toBeNull();
+    consoleError.mockRestore();
   });
 });

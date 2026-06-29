@@ -27,7 +27,7 @@ class InvoiceApiViewSetTest(TestCase):
             role=TenantMembership.Role.OWNER,
             is_default=True,
         )
-        self.client = APIClient()
+        self.client = APIClient(HTTP_X_REQUESTED_WITH="XMLHttpRequest")
         self.client.force_authenticate(self.user)
         self.account = Account.objects.create(
             user=self.user,

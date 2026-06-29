@@ -12,6 +12,7 @@ def get_user_tenant(user, request=None):
     tenant from the user's default TenantMembership.
     """
     requested_tenant_id = None
+    print(f"DEBUG: get_user_tenant called for user {user.pk}")
     if request is not None:
         requested_tenant_id = request.headers.get("X-Tenant-ID") or request.META.get("HTTP_X_TENANT_ID")
 
@@ -36,7 +37,10 @@ def get_user_tenant(user, request=None):
         .first()
     )
     if membership:
+        print(f"DEBUG: Found default membership tenant {membership.tenant.pk}")
         return membership.tenant
+
+    print("DEBUG: No default membership found")
 
     # Fallback: first active membership
     membership = (

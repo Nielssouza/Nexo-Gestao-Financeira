@@ -398,10 +398,23 @@ CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_SOFT_TIME_LIMIT = 240   # 4 min — SoftTimeLimitExceeded (capturável)
 CELERY_TASK_TIME_LIMIT = 270        # 4.5 min — kill forçado (fallback)
 
-# Cache — usa Redis se disponível (necessário para rate limiting em múltiplos dynos),
-# caso contrário cai para memória local (funciona em single-process).
+# Cache — usa Redis se disponível e acessível (necessário para rate limiting em
+# múltiplos dynos). Caso contrário, cai para memória local (single-process).
 _redis_url = os.getenv("REDIS_URL", "")
-if _redis_url:
+
+def _redis_is_reachable(url: str) -> bool:
+    """Tenta conectar ao Redis para verificar se está disponível."""
+    if not url:
+        return False
+    try:
+        import redis as _redis
+        client = _redis.from_url(url, socket_connect_timeout=1)
+        client.ping()
+        return True
+    except Exception:
+        return False
+
+if _redis_is_reachable(_redis_url):
     CACHES = {
         "default": {
             "BACKEND": "django.core.cache.backends.redis.RedisCache",
