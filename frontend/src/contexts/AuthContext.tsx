@@ -43,6 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     doLogout();
+    localStorage.removeItem('nexo.activeTenantId');
     setUser(null);
     setTenant(null);
   };

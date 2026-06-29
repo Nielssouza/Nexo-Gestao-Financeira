@@ -18,6 +18,10 @@ export default function Login() {
     setError('');
     setLoading(true);
 
+    // Limpa o tenant ativo anterior (de outro usuario que possa ter logado nesta máquina)
+    // para não enviar X-Tenant-ID de outro tenant no fetchMe e tomar 403 Forbidden.
+    localStorage.removeItem('nexo.activeTenantId');
+
     try {
       await login({ username, password });
       await refresh();
