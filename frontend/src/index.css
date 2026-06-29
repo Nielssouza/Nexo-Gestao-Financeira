@@ -2754,8 +2754,8 @@ input[type="radio"] {
 
 /* Todos page */
 .todos-toolbar {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.55rem;
   align-items: center;
   width: 100%;

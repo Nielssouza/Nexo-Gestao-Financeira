@@ -21,7 +21,7 @@ from tenants.api_views import (
     TenantMembershipViewSet,
     TenantProfileView,
 )
-from todos.api_views import TodoItemViewSet
+from todos.api_views import ProjectViewSet, TenantMembersView, TodoItemViewSet
 from transactions.api_views import ClosedMonthViewSet, TransactionViewSet
 from users.api_views import (
     ApproveUserView,
@@ -52,6 +52,7 @@ router.register("investment-entries", InvestmentEntryViewSet)
 router.register("tenant-memberships", TenantMembershipViewSet, basename="tenant-membership")
 router.register("tenant-companies", TenantCompanyViewSet, basename="tenant-company")
 router.register("nfse-credentials", NfseCredentialViewSet, basename="nfse-credential")
+router.register("todo-projects", ProjectViewSet, basename="todo-project")
 router.register("todos", TodoItemViewSet, basename="todo")
 
 app_name = "api"
@@ -81,6 +82,7 @@ urlpatterns = [
     # Tenant profile
     path("tenant/", TenantProfileView.as_view(), name="tenant_profile"),
     path("tenant/invite-user/", TenantInviteUserView.as_view(), name="tenant_invite_user"),
+    path("tenant/members/", TenantMembersView.as_view(), name="tenant_members"),
 
     # CEP lookup
     path("cep/<str:cep>/", CepLookupView.as_view(), name="cep_lookup"),

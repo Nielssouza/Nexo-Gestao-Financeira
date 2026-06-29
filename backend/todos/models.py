@@ -5,6 +5,47 @@ from django.utils import timezone
 from common.tenancy import assign_tenant
 
 
+class Project(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="todo_projects",
+    )
+    tenant = models.ForeignKey(
+        "tenants.Tenant",
+        on_delete=models.CASCADE,
+        related_name="todo_projects",
+        null=True,
+        blank=True,
+    )
+    name = models.CharField("Nome", max_length=100)
+    description = models.TextField("Descricao", blank=True)
+    color = models.CharField("Cor", max_length=7, default="#6366f1")
+    is_finished = models.BooleanField("Finalizado", default=False)
+    finished_at = models.DateTimeField("Finalizado em", null=True, blank=True)
+    created_at = models.DateTimeField("Criado em", auto_now_add=True)
+    updated_at = models.DateTimeField("Atualizado em", auto_now=True)
+
+    class Meta:
+        ordering = ("name",)
+        verbose_name = "Projeto"
+        verbose_name_plural = "Projetos"
+        indexes = [
+            models.Index(fields=("tenant",), name="project_tenant_idx"),
+        ]
+
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        assign_tenant(self)
+        if self.is_finished and self.finished_at is None:
+            self.finished_at = timezone.now()
+        elif not self.is_finished:
+            self.finished_at = None
+        super().save(*args, **kwargs)
+
+
 class TodoItem(models.Model):
     class Priority(models.TextChoices):
         LOW = "low", "Baixa"
@@ -25,6 +66,20 @@ class TodoItem(models.Model):
         "tenants.Tenant",
         on_delete=models.CASCADE,
         related_name="todo_items",
+        null=True,
+        blank=True,
+    )
+    project = models.ForeignKey(
+        "todos.Project",
+        on_delete=models.SET_NULL,
+        related_name="todos",
+        null=True,
+        blank=True,
+    )
+    assigned_to = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="assigned_todos",
         null=True,
         blank=True,
     )
