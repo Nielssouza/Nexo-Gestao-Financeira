@@ -135,8 +135,8 @@ function buildPrintHtml(data: InvoicePrintData): string {
   @page{size:auto;margin:0}
   *{margin:0;padding:0;box-sizing:border-box}
   body{font-family:Arial,Helvetica,sans-serif;color:#111;background:#fff;padding:48px 52px;font-size:13px;line-height:1.5}
-  .print-btn{display:inline-flex;align-items:center;gap:8px;margin-bottom:28px;padding:8px 22px;background:#111;color:#fff;border:none;cursor:pointer;font-size:13px;font-weight:700;letter-spacing:.04em}
-  @media print{html,body{width:100%;min-height:100%;}.print-btn{display:none!important}body{padding:24px 28px}}
+  .print-btn{display:inline-flex;align-items:center;gap:8px;padding:8px 22px;background:#111;color:#fff;border:none;cursor:pointer;font-size:13px;font-weight:700;letter-spacing:.04em}
+  @media print{html,body{width:100%;min-height:100%;}.print-actions{display:none!important}body{padding:24px 28px}}
   hr{border:none;border-top:1px solid #e5e7eb;margin:20px 0}
   .section-label{font-size:9px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#9ca3af;margin-bottom:10px}
   .company-name{font-size:14px;font-weight:800;margin-bottom:8px;letter-spacing:.01em}
@@ -152,7 +152,10 @@ function buildPrintHtml(data: InvoicePrintData): string {
 </head>
 <body>
 
-<button class="print-btn" onclick="window.print()">&#128438; Imprimir</button>
+<div class="print-actions" style="display:flex;gap:12px;margin-bottom:28px;">
+  <button class="print-btn" onclick="window.print()">&#128438; Imprimir</button>
+  <button class="print-btn" style="background:#e5e7eb;color:#111;" onclick="window.close()">&#10006; Fechar</button>
+</div>
 
 <div style="display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:22px;border-bottom:2px solid #111;margin-bottom:22px">
   <div style="width:58px;height:58px;background:#111;display:flex;align-items:center;justify-content:center;flex-shrink:0">
