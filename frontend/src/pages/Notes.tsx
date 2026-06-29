@@ -49,8 +49,8 @@ function NoteForm({
         onChange={(e) => setTitle(e.target.value)}
         autoFocus
         style={{
-          background: '#ffffff',
-          color: '#1e293b',
+          background: 'var(--color-bg-elevated)',
+          color: 'var(--color-text-primary)',
           fontWeight: 600,
         }}
       />
@@ -65,8 +65,8 @@ function NoteForm({
           resize: 'vertical',
           fontFamily: 'inherit',
           fontSize: '0.9rem',
-          background: '#ffffff',
-          color: '#1e293b',
+          background: 'var(--color-bg-elevated)',
+          color: 'var(--color-text-primary)',
         }}
       />
       <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
