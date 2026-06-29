@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import api from './client';
 import axios from 'axios';
 import MockAdapter from 'axios-mock-adapter';
@@ -23,7 +23,7 @@ describe('API Client Interceptors', () => {
   afterEach(() => {
     mock.restore();
     mockAxios.restore();
-    window.location = originalLocation;
+    window.location = originalLocation as any;
   });
 
   it('adds X-Tenant-ID header when activeTenantId is in localStorage', async () => {

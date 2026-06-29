@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+﻿import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fetchMe, login, logout, register } from './auth';
 
 const apiMock = vi.hoisted(() => ({
@@ -45,7 +45,7 @@ describe('auth api', () => {
         name: 'Empresa',
         slug: 'empresa',
         person_type: 'pj',
-        person_type_display: 'Pessoa Jur�dica',
+        person_type_display: 'Pessoa Jurídica',
         role: 'owner',
       },
     };
@@ -90,6 +90,6 @@ describe('auth api', () => {
     expect(window.location.href).toBe('/login');
 
     // restore
-    window.location = originalLocation;
+    window.location = originalLocation as any;
   });
 });

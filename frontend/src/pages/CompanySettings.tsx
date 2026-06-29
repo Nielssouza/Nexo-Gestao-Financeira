@@ -413,7 +413,7 @@ export default function CompanySettings() {
               <div><label className="label">E-mail</label><input type="email" name="email" className="input" required /></div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: cols2, gap: 'var(--space-md)' }}>
-              <div><label className="label">Senha</label><input type="password" name="password" className="input" placeholder="Mínimo 8 caracteres" minLength={8} required /></div>
+              <div><label className="label">Senha</label><input type="password" name="password" className="input" placeholder="Mínimo 6 caracteres" minLength={6} required /></div>
               <div>
                 <label className="label">Papel</label>
                 <select name="role" className="input">

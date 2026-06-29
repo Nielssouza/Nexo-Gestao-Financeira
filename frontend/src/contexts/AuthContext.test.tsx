@@ -16,7 +16,7 @@ describe('AuthContext', () => {
 
   it('initializes with loading state and attempts to fetch user', async () => {
     (authApi.fetchMe as any).mockResolvedValueOnce({
-      user: { id: 1, name: 'Test User' },
+      user: { id: 1, first_name: 'Test', last_name: 'User' },
       tenant: { id: 1, name: 'Test Tenant' }
     });
 
@@ -31,7 +31,7 @@ describe('AuthContext', () => {
     });
 
     expect(result.current.isLoggedIn).toBe(true);
-    expect(result.current.user?.name).toBe('Test User');
+    expect(result.current.user?.first_name).toBe('Test');
     expect(result.current.tenant?.name).toBe('Test Tenant');
   });
 
