@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Archive,
@@ -34,7 +34,7 @@ import {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const PRIORITY_LABEL: Record<Priority, string> = { low: 'Baixa', medium: 'Media', high: 'Alta' };
+
 const PRIORITY_COLOR: Record<Priority, string> = {
   low: 'var(--color-text-muted)',
   medium: '#f59e0b',
@@ -249,7 +249,7 @@ function TodoRow({ item, onToggle, onEdit, onDelete }: {
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
           <span style={{ fontWeight: 600, fontSize: '0.92rem', textDecoration: isDone ? 'line-through' : 'none' }}>{item.title}</span>
           <span style={{ fontSize: '0.72rem', color: STATUS_COLOR[status], fontWeight: 800 }}>{STATUS_LABEL[status]}</span>
-          <Flag size={12} style={{ color: PRIORITY_COLOR[item.priority], flexShrink: 0 }} title={PRIORITY_LABEL[item.priority]} />
+          <Flag size={12} style={{ color: PRIORITY_COLOR[item.priority], flexShrink: 0 }} />
           {due && (
             <span style={{ fontSize: '0.72rem', color: due.overdue ? '#ef4444' : 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: 2 }}>
               <Calendar size={11} />{due.label}
