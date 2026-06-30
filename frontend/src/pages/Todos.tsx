@@ -88,7 +88,7 @@ function formatPriorityLabel(priority: Priority) {
 }
 
 function formatMemberLabel(name: string, email: string) {
-  return name && email ? `${name} (${email})` : name || email;
+  return name || email;
 }
 
 const DEFAULT_PROJECT_COLOR = '#ffffff';
