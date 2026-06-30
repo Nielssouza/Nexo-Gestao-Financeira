@@ -61,7 +61,7 @@ export default function App() {
               <Route path="investments" element={<Investments />} />
               <Route path="todos" element={<Todos />} />
               <Route path="notes" element={<Notes />} />
-              <Route path="settings/company" element={<ProtectedRoute requireAdmin><CompanySettings /></ProtectedRoute>} />
+              <Route path="settings/company" element={<CompanySettings />} />
               <Route path="admin" element={<ProtectedRoute requireSuperuser><Administration /></ProtectedRoute>} />
             </Route>
           </Routes>

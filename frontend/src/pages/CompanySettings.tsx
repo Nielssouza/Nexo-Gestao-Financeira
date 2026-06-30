@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Building2, ChevronRight, KeyRound, MapPin, Pencil, Plus, Save, Users, X } from 'lucide-react';
@@ -19,6 +19,7 @@ import {
 import { fetchTenantMembers, type TenantMember, updateTenantMember } from '../api/users';
 import { useAuth } from '../contexts/AuthContext';
 import { useViewMode } from '../contexts/ViewModeContext';
+import { useIsAdmin } from '../hooks/useIsAdmin';
 
 function formatWorkspaceId(documentValue?: string) {
   const value = (documentValue || '').trim();
@@ -64,7 +65,9 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
 }
 
 export default function CompanySettings() {
+  const navigate = useNavigate();
   const { refresh } = useAuth();
+  const isAdmin = useIsAdmin();
   const { isMobile } = useViewMode();
   const cols2 = isMobile ? '1fr' : '1fr 1fr';
   const cols21 = isMobile ? '1fr' : '2fr 1fr';
@@ -82,6 +85,13 @@ export default function CompanySettings() {
     setSearchParams({}, { replace: true });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Redirect non-admins who land on the page without a modal to show
+  useEffect(() => {
+    if (!isAdmin && modal === null) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAdmin, modal, navigate]);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [cepLoading, setCepLoading] = useState(false);
@@ -105,6 +115,7 @@ export default function CompanySettings() {
   const companyLimitReached = tenantCompanies.length >= companyLimit;
 
   const closeModal = () => { setModal(null); setSuccessMsg(''); setErrorMsg(''); setEditingMember(null); setEditingCompany(null); };
+  const closeProfileModal = () => { closeModal(); navigate('/dashboard'); };
 
   const updateMutation = useMutation({
     mutationFn: updateTenantProfile,
@@ -284,26 +295,30 @@ export default function CompanySettings() {
     return <div className="animate-fade-in"><div className="card skeleton" style={{ height: 300 }} /></div>;
   }
 
-  const sections = [
+  const allSections = [
     {
       key: 'companies' as const,
       icon: Building2,
       title: 'Empresas do Tenant',
       description: `${tenantCompanies.length}/${companyLimit} cadastros`,
+      adminOnly: true,
     },
     {
       key: 'users' as const,
       icon: Users,
       title: 'Usuarios',
       description: `${tenantMembers.length} membro${tenantMembers.length !== 1 ? 's' : ''}`,
+      adminOnly: true,
     },
     {
       key: 'nfse' as const,
       icon: KeyRound,
       title: 'Credenciais NFS-e',
       description: nfseCredential?.has_password ? 'Senha configurada' : 'Sem senha configurada',
+      adminOnly: true,
     },
   ];
+  const sections = allSections.filter((s) => !s.adminOnly || isAdmin);
 
   return (
     <div className="animate-fade-in" style={{ maxWidth: 640, margin: '0 auto' }}>
@@ -334,48 +349,57 @@ export default function CompanySettings() {
 
       {/* Modal: Dados da Empresa */}
       {modal === 'profile' && (
-        <Modal title="Dados da Empresa" onClose={closeModal}>
+        <Modal title="Dados da Empresa" onClose={closeProfileModal}>
           {successMsg && <div style={{ background: 'var(--color-success-muted)', color: 'var(--color-success)', padding: '10px 14px', borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-md)', fontSize: '0.85rem' }}>{successMsg}</div>}
           {errorMsg && <div style={{ background: 'var(--color-danger-muted)', color: 'var(--color-danger)', padding: '10px 14px', borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-md)', fontSize: '0.85rem' }}>{errorMsg}</div>}
+          {!isAdmin && (
+            <div style={{ background: 'var(--color-bg-elevated)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '8px 14px', marginBottom: 'var(--space-md)', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+              Somente leitura — apenas administradores podem editar.
+            </div>
+          )}
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
             <div style={{ display: 'grid', gridTemplateColumns: cols2, gap: 'var(--space-md)' }}>
-              <div><label className="label">Nome da Empresa</label><input type="text" name="name" className="input" defaultValue={profile?.name} required /></div>
-              <div><label className="label">CNPJ / CPF</label><input type="text" name="document" className="input" defaultValue={profile?.document} /></div>
+              <div><label className="label">Nome da Empresa</label><input type="text" name="name" className="input" defaultValue={profile?.name} required disabled={!isAdmin} /></div>
+              <div><label className="label">CNPJ / CPF</label><input type="text" name="document" className="input" defaultValue={profile?.document} disabled={!isAdmin} /></div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: cols2, gap: 'var(--space-md)' }}>
-              <div><label className="label">E-mail de Contato</label><input type="email" name="email" className="input" defaultValue={profile?.email} /></div>
-              <div><label className="label">Telefone</label><input type="text" name="phone" className="input" defaultValue={profile?.phone} /></div>
+              <div><label className="label">E-mail de Contato</label><input type="email" name="email" className="input" defaultValue={profile?.email} disabled={!isAdmin} /></div>
+              <div><label className="label">Telefone</label><input type="text" name="phone" className="input" defaultValue={profile?.phone} disabled={!isAdmin} /></div>
             </div>
             <p style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-secondary)', margin: 0 }}>Endereco (para Notas Fiscais)</p>
             <div style={{ display: 'grid', gridTemplateColumns: cols21, gap: 'var(--space-md)' }}>
-              <div><label className="label">Logradouro</label><input type="text" name="address" className="input" defaultValue={profile?.address} /></div>
-              <div><label className="label">Numero</label><input type="text" name="address_number" className="input" defaultValue={profile?.address_number} /></div>
+              <div><label className="label">Logradouro</label><input type="text" name="address" className="input" defaultValue={profile?.address} disabled={!isAdmin} /></div>
+              <div><label className="label">Numero</label><input type="text" name="address_number" className="input" defaultValue={profile?.address_number} disabled={!isAdmin} /></div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: cols2, gap: 'var(--space-md)' }}>
-              <div><label className="label">Complemento</label><input type="text" name="address_complement" className="input" defaultValue={profile?.address_complement} /></div>
-              <div><label className="label">Bairro</label><input type="text" name="district" className="input" defaultValue={profile?.district} /></div>
+              <div><label className="label">Complemento</label><input type="text" name="address_complement" className="input" defaultValue={profile?.address_complement} disabled={!isAdmin} /></div>
+              <div><label className="label">Bairro</label><input type="text" name="district" className="input" defaultValue={profile?.district} disabled={!isAdmin} /></div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: cols211, gap: 'var(--space-md)' }}>
-              <div><label className="label">Cidade</label><input type="text" name="city" className="input" defaultValue={profile?.city} /></div>
-              <div><label className="label">Estado (UF)</label><input type="text" name="state" className="input" defaultValue={profile?.state} maxLength={2} /></div>
+              <div><label className="label">Cidade</label><input type="text" name="city" className="input" defaultValue={profile?.city} disabled={!isAdmin} /></div>
+              <div><label className="label">Estado (UF)</label><input type="text" name="state" className="input" defaultValue={profile?.state} maxLength={2} disabled={!isAdmin} /></div>
               <div>
                 <label className="label">CEP</label>
                 <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
-                  <input type="text" name="postal_code" className="input" defaultValue={profile?.postal_code} />
-                  <button type="button" className="btn btn-secondary" onClick={handleCepLookup} disabled={cepLoading}><MapPin size={16} /></button>
+                  <input type="text" name="postal_code" className="input" defaultValue={profile?.postal_code} disabled={!isAdmin} />
+                  {isAdmin && <button type="button" className="btn btn-secondary" onClick={handleCepLookup} disabled={cepLoading}><MapPin size={16} /></button>}
                 </div>
               </div>
             </div>
-            <div>
-              <label className="label">Logo da Empresa</label>
-              <input type="file" name="logo" className="input" accept="image/*" />
-              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Utilizado na impressao de faturas.</span>
-            </div>
+            {isAdmin && (
+              <div>
+                <label className="label">Logo da Empresa</label>
+                <input type="file" name="logo" className="input" accept="image/*" />
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Utilizado na impressao de faturas.</span>
+              </div>
+            )}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-sm)' }}>
-              <button type="button" className="btn" onClick={closeModal}>Cancelar</button>
-              <button type="submit" className="btn btn-primary" disabled={updateMutation.isPending}>
-                <Save size={16} />{updateMutation.isPending ? 'Salvando...' : 'Salvar'}
-              </button>
+              <button type="button" className="btn" onClick={closeProfileModal}>Fechar</button>
+              {isAdmin && (
+                <button type="submit" className="btn btn-primary" disabled={updateMutation.isPending}>
+                  <Save size={16} />{updateMutation.isPending ? 'Salvando...' : 'Salvar'}
+                </button>
+              )}
             </div>
           </form>
         </Modal>

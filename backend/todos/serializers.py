@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from common.api_mixins import get_user_tenant
 from todos.models import Project, TodoItem
 
 
@@ -80,11 +81,15 @@ class TodoItemSerializer(serializers.ModelSerializer):
             return parent
         request = self.context.get("request")
         if request is not None:
-            request_tenant = getattr(request, "tenant", None)
-            if request_tenant is not None and parent.tenant_id != request_tenant.id:
-                raise serializers.ValidationError("A tarefa pai precisa pertencer ao tenant atual.")
-            if request_tenant is None and parent.user_id != request.user.id:
-                raise serializers.ValidationError("A tarefa pai precisa pertencer ao usuario atual.")
+            try:
+                tenant = get_user_tenant(request.user, request)
+                if tenant and parent.tenant_id != tenant.id:
+                    raise serializers.ValidationError("A tarefa pai precisa pertencer ao tenant atual.")
+            except serializers.ValidationError:
+                raise
+            except Exception:
+                if parent.user_id != request.user.id:
+                    raise serializers.ValidationError("A tarefa pai precisa pertencer ao usuario atual.")
         if self.instance and parent.id == self.instance.id:
             raise serializers.ValidationError("Uma tarefa nao pode ser subtarefa dela mesma.")
         if parent.parent_id:

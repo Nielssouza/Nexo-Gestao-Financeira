@@ -35,9 +35,7 @@ interface SidebarProps {
 
 export default function Sidebar({ isOpen, onClose, collapsed, onToggleCollapse }: SidebarProps) {
   const { user, tenant } = useAuth();
-  const canManageTenantSettings = Boolean(
-    user?.is_superuser || tenant?.role === 'owner' || tenant?.role === 'admin',
-  );
+  const canManageTenantSettings = Boolean(user?.is_superuser || tenant?.role === 'owner' || tenant?.role === 'admin');
   const canManageSystem = Boolean(user?.is_superuser);
   const items = [
     ...navItems,
