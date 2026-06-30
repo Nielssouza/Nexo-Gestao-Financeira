@@ -14,6 +14,7 @@ from tenants.models import NfseCredential, TenantCompany, TenantCompanyAccess, T
 from tenants.serializers import (
     NfseCredentialSerializer,
     TenantCompanySerializer,
+    TenantMemberUpdateSerializer,
     TenantMembershipSerializer,
     TenantSerializer,
 )
@@ -78,6 +79,40 @@ class TenantMembershipViewSet(generics.ListCreateAPIView, viewsets.GenericViewSe
         tenant = get_user_tenant(self.request.user, self.request)
         require_tenant_admin(self.request.user, tenant)
         serializer.save(tenant=tenant)
+
+    @action(detail=True, methods=["patch"], url_path="member")
+    def member(self, request, pk=None):
+        tenant = get_user_tenant(request.user, request)
+        require_tenant_admin(request.user, tenant)
+        membership = self.get_object()
+
+        if membership.tenant_id != tenant.pk:
+            raise PermissionDenied("Usuario nao pertence a este tenant.")
+
+        serializer = TenantMemberUpdateSerializer(
+            data=request.data,
+            context={"request": request, "membership": membership},
+        )
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        user = membership.user
+        parts = data["name"].strip().split()
+        user.first_name = parts[0][:150] if parts else ""
+        user.last_name = " ".join(parts[1:])[:150]
+        user.email = data["email"]
+        password = data.get("password", "")
+        if password:
+            user.set_password(password)
+        update_fields = ["first_name", "last_name", "email"]
+        if password:
+            update_fields.append("password")
+        user.save(update_fields=update_fields)
+
+        membership.role = data["role"]
+        membership.save(update_fields=["role", "updated_at"])
+
+        return Response(self.get_serializer(membership).data)
 
     @action(detail=True, methods=["patch"], url_path="companies")
     def companies(self, request, pk=None):

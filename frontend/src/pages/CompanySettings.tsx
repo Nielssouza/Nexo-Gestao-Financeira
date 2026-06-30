@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Building2, ChevronRight, KeyRound, MapPin, Plus, Save, Users, X } from 'lucide-react';
+import { Building2, ChevronRight, KeyRound, MapPin, Pencil, Plus, Save, Users, X } from 'lucide-react';
 import {
   createNfseCredential,
   createTenantCompany,
@@ -13,7 +13,7 @@ import {
   updateNfseCredential,
   updateTenantProfile,
 } from '../api/tenant';
-import { fetchTenantMembers, type TenantMember } from '../api/users';
+import { fetchTenantMembers, type TenantMember, updateTenantMember } from '../api/users';
 import { useViewMode } from '../contexts/ViewModeContext';
 
 function formatWorkspaceId(documentValue?: string) {
@@ -66,10 +66,11 @@ export default function CompanySettings() {
   const cols211 = isMobile ? '1fr' : '2fr 1fr 1fr';
   const queryClient = useQueryClient();
 
-  const [modal, setModal] = useState<'profile' | 'companies' | 'nfse' | 'users' | null>(null);
+  const [modal, setModal] = useState<'profile' | 'companies' | 'nfse' | 'users' | 'userInvite' | null>(null);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [cepLoading, setCepLoading] = useState(false);
+  const [editingMember, setEditingMember] = useState<TenantMember | null>(null);
 
   const { data: profile, isLoading } = useQuery({ queryKey: ['tenantProfile'], queryFn: fetchTenantProfile });
   const { data: tenantMembers = [] } = useQuery<TenantMember[]>({ queryKey: ['tenant-members'], queryFn: fetchTenantMembers });
@@ -79,7 +80,7 @@ export default function CompanySettings() {
   const companyLimit = 2;
   const companyLimitReached = tenantCompanies.length >= companyLimit;
 
-  const closeModal = () => { setModal(null); setSuccessMsg(''); setErrorMsg(''); };
+  const closeModal = () => { setModal(null); setSuccessMsg(''); setErrorMsg(''); setEditingMember(null); };
 
   const updateMutation = useMutation({
     mutationFn: updateTenantProfile,
@@ -107,11 +108,27 @@ export default function CompanySettings() {
     mutationFn: inviteTenantUser,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tenant-members'] });
-      setSuccessMsg('Usuário cadastrado com sucesso!');
+      setSuccessMsg('Usuario cadastrado com sucesso!');
+      setModal('users');
       setTimeout(() => setSuccessMsg(''), 2000);
     },
     onError: (error: any) => {
-      setErrorMsg(error?.response?.data?.detail || 'Erro ao cadastrar usuário.');
+      setErrorMsg(error?.response?.data?.detail || 'Erro ao cadastrar usuario.');
+    },
+  });
+
+  const updateMemberMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: { name: string; email: string; role: 'owner' | 'admin' | 'member'; password?: string } }) =>
+      updateTenantMember(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tenant-members'] });
+      setSuccessMsg('Usuario atualizado com sucesso!');
+      setEditingMember(null);
+      setTimeout(() => setSuccessMsg(''), 2000);
+    },
+    onError: (error: any) => {
+      const data = error?.response?.data || {};
+      setErrorMsg(data.detail || data.email?.[0] || data.password?.[0] || 'Erro ao atualizar usuario.');
     },
   });
 
@@ -149,7 +166,7 @@ export default function CompanySettings() {
       document.querySelector<HTMLInputElement>('input[name="state"]')!.value = data.state || '';
       if (input) input.value = data.postal_code || cep;
     } catch {
-      setErrorMsg('CEP não encontrado ou serviço indisponível.');
+      setErrorMsg('CEP nao encontrado ou servico indisponivel.');
     } finally {
       setCepLoading(false);
     }
@@ -174,6 +191,24 @@ export default function CompanySettings() {
       email: String(formData.get('email') || '').trim(),
       password: String(formData.get('password') || '').trim(),
       role: String(formData.get('role') || 'member'),
+    });
+    form.reset();
+  };
+
+  const handleMemberEditSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editingMember) return;
+    setSuccessMsg(''); setErrorMsg('');
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+    await updateMemberMutation.mutateAsync({
+      id: editingMember.id,
+      payload: {
+        name: String(formData.get('name') || '').trim(),
+        email: String(formData.get('email') || '').trim(),
+        password: String(formData.get('password') || '').trim() || undefined,
+        role: String(formData.get('role') || editingMember.role) as 'owner' | 'admin' | 'member',
+      },
     });
     form.reset();
   };
@@ -203,7 +238,7 @@ export default function CompanySettings() {
       key: 'profile' as const,
       icon: Building2,
       title: 'Dados da Empresa',
-      description: profile?.name || 'Nome, CNPJ, endereço e logo',
+      description: profile?.name || 'Nome, CNPJ, endereco e logo',
     },
     {
       key: 'companies' as const,
@@ -214,7 +249,7 @@ export default function CompanySettings() {
     {
       key: 'users' as const,
       icon: Users,
-      title: 'Usuários',
+      title: 'Usuarios',
       description: `${tenantMembers.length} membro${tenantMembers.length !== 1 ? 's' : ''}`,
     },
     {
@@ -238,10 +273,10 @@ export default function CompanySettings() {
         <div>
           <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>{profile?.name}</h3>
           <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.82rem' }}>
-            {workspaceIdLabel(profile?.document)}: {formatWorkspaceId(profile?.document) || 'Não informado'}
+            {workspaceIdLabel(profile?.document)}: {formatWorkspaceId(profile?.document) || 'Nao informado'}
           </p>
           <p style={{ color: 'var(--color-text-muted)', fontSize: '0.78rem', marginTop: 2 }}>
-            Tenant: {profile?.id || '—'}
+            Tenant: {profile?.id || '--'}
           </p>
         </div>
       </div>
@@ -285,10 +320,10 @@ export default function CompanySettings() {
               <div><label className="label">E-mail de Contato</label><input type="email" name="email" className="input" defaultValue={profile?.email} /></div>
               <div><label className="label">Telefone</label><input type="text" name="phone" className="input" defaultValue={profile?.phone} /></div>
             </div>
-            <p style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-secondary)', margin: 0 }}>Endereço (para Notas Fiscais)</p>
+            <p style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--color-text-secondary)', margin: 0 }}>Endereco (para Notas Fiscais)</p>
             <div style={{ display: 'grid', gridTemplateColumns: cols21, gap: 'var(--space-md)' }}>
               <div><label className="label">Logradouro</label><input type="text" name="address" className="input" defaultValue={profile?.address} /></div>
-              <div><label className="label">Número</label><input type="text" name="address_number" className="input" defaultValue={profile?.address_number} /></div>
+              <div><label className="label">Numero</label><input type="text" name="address_number" className="input" defaultValue={profile?.address_number} /></div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: cols2, gap: 'var(--space-md)' }}>
               <div><label className="label">Complemento</label><input type="text" name="address_complement" className="input" defaultValue={profile?.address_complement} /></div>
@@ -308,7 +343,7 @@ export default function CompanySettings() {
             <div>
               <label className="label">Logo da Empresa</label>
               <input type="file" name="logo" className="input" accept="image/*" />
-              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Utilizado na impressão de faturas.</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Utilizado na impressao de faturas.</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-sm)' }}>
               <button type="button" className="btn" onClick={closeModal}>Cancelar</button>
@@ -338,9 +373,9 @@ export default function CompanySettings() {
                   <span style={{ fontSize: '0.75rem', color: 'var(--color-text-secondary)', fontWeight: 600 }}>Seq. {company.sequence_number}</span>
                   <div>
                     <strong style={{ display: 'block', fontSize: '0.88rem' }}>{company.name}</strong>
-                    <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.78rem' }}>{workspaceIdLabel(company.document)}: {formatWorkspaceId(company.document) || 'Não informado'}</span>
+                    <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.78rem' }}>{workspaceIdLabel(company.document)}: {formatWorkspaceId(company.document) || 'Nao informado'}</span>
                   </div>
-                  {company.is_default && <span style={{ color: 'var(--color-success)', fontSize: '0.75rem', fontWeight: 600 }}>Padrão</span>}
+                  {company.is_default && <span style={{ color: 'var(--color-success)', fontSize: '0.75rem', fontWeight: 600 }}>Padrao</span>}
                 </div>
               ))
             }
@@ -362,7 +397,7 @@ export default function CompanySettings() {
               <label className="label">E-mail</label>
               <input type="email" name="email" className="input" disabled={companyLimitReached} />
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-sm)' }}>
               <button type="submit" className="btn btn-primary" disabled={companyLimitReached || companyMutation.isPending}>
                 <Plus size={16} />{companyMutation.isPending ? 'Adicionando...' : 'Adicionar'}
               </button>
@@ -371,9 +406,9 @@ export default function CompanySettings() {
         </Modal>
       )}
 
-      {/* Modal: Usuários */}
+      {/* Modal: Usuarios */}
       {modal === 'users' && (
-        <Modal title="Usuários do Tenant" onClose={closeModal}>
+        <Modal title="Usuarios do Tenant" onClose={closeModal}>
           {successMsg && <div style={{ background: 'var(--color-success-muted)', color: 'var(--color-success)', padding: '10px 14px', borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-md)', fontSize: '0.85rem' }}>{successMsg}</div>}
           {errorMsg && <div style={{ background: 'var(--color-danger-muted)', color: 'var(--color-danger)', padding: '10px 14px', borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-md)', fontSize: '0.85rem' }}>{errorMsg}</div>}
 
@@ -391,20 +426,51 @@ export default function CompanySettings() {
                     <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{m.user_email}</div>
                   </div>
                   <span className={m.role === 'owner' ? 'badge badge-success' : m.role === 'admin' ? 'badge badge-info' : 'badge'} style={{ fontSize: '0.7rem' }}>
-                    {m.role === 'member' ? 'Usuário' : 'Administrador'}
+                    {m.role === 'member' ? 'Usuario' : 'Administrador'}
                   </span>
+                  <button
+                    type="button"
+                    className="btn"
+                    style={{ height: 30, padding: '0 0.65rem', fontSize: '0.75rem', gap: '0.3rem' }}
+                    onClick={() => { setEditingMember(m); setSuccessMsg(''); setErrorMsg(''); }}
+                  >
+                    <Pencil size={12} /> Editar
+                  </button>
                 </div>
               ))
             }
           </div>
 
-          {/* Formulário de convite */}
+          {tenantMembers.length >= 5 && (
+            <div style={{ background: 'var(--color-warning-muted)', color: 'var(--color-warning)', padding: '10px 14px', borderRadius: 'var(--radius-md)', fontSize: '0.85rem', marginBottom: 'var(--space-md)' }}>
+              Limite de 5 usuarios por tenant atingido.
+            </div>
+          )}
+          <div style={{ display: 'flex', alignItems: isMobile ? 'stretch' : 'center', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', gap: 'var(--space-md)' }}>
+            <p style={{ fontSize: '0.82rem', color: 'var(--color-text-secondary)', margin: 0 }}>
+              Adicionar usuario <span style={{ color: 'var(--color-text-muted)' }}>({tenantMembers.length}/5)</span>
+            </p>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={tenantMembers.length >= 5}
+              onClick={() => { setModal('userInvite'); setSuccessMsg(''); setErrorMsg(''); }}
+            >
+              <Plus size={16} />Adicionar usuario
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {modal === 'userInvite' && (
+        <Modal title="Adicionar usuario" onClose={() => { setModal('users'); setSuccessMsg(''); setErrorMsg(''); }}>
+          {errorMsg && <div style={{ background: 'var(--color-danger-muted)', color: 'var(--color-danger)', padding: '10px 14px', borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-md)', fontSize: '0.85rem' }}>{errorMsg}</div>}
           <p style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 'var(--space-md)' }}>
-            Adicionar usuário <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>({tenantMembers.length}/5)</span>
+            Adicionar usuario <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>({tenantMembers.length}/5)</span>
           </p>
           {tenantMembers.length >= 5 && (
             <div style={{ background: 'var(--color-warning-muted)', color: 'var(--color-warning)', padding: '10px 14px', borderRadius: 'var(--radius-md)', fontSize: '0.85rem', marginBottom: 'var(--space-md)' }}>
-              Limite de 5 usuários por tenant atingido.
+              Limite de 5 usuarios por tenant atingido.
             </div>
           )}
           <form onSubmit={handleInviteSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
@@ -413,18 +479,52 @@ export default function CompanySettings() {
               <div><label className="label">E-mail</label><input type="email" name="email" className="input" required /></div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: cols2, gap: 'var(--space-md)' }}>
-              <div><label className="label">Senha</label><input type="password" name="password" className="input" placeholder="Mínimo 6 caracteres" minLength={6} required /></div>
+              <div><label className="label">Senha</label><input type="password" name="password" className="input" placeholder="Minimo 6 caracteres" minLength={6} required /></div>
               <div>
                 <label className="label">Papel</label>
-                <select name="role" className="input">
-                  <option value="member">Usuário</option>
+                <select name="role" className="input" defaultValue="member">
+                  <option value="member">Usuario</option>
                   <option value="admin">Administrador</option>
                 </select>
               </div>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-sm)' }}>
+              <button type="button" className="btn" onClick={() => { setModal('users'); setErrorMsg(''); }}>
+                Cancelar
+              </button>
               <button type="submit" className="btn btn-primary" disabled={inviteMutation.isPending || tenantMembers.length >= 5}>
-                <Plus size={16} />{inviteMutation.isPending ? 'Cadastrando...' : 'Adicionar usuário'}
+                <Plus size={16} />{inviteMutation.isPending ? 'Cadastrando...' : 'Adicionar usuario'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {editingMember && (
+        <Modal title="Editar usuario" onClose={() => { setEditingMember(null); setErrorMsg(''); }}>
+          {errorMsg && <div style={{ background: 'var(--color-danger-muted)', color: 'var(--color-danger)', padding: '10px 14px', borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-md)', fontSize: '0.85rem' }}>{errorMsg}</div>}
+          <form key={editingMember.id} onSubmit={handleMemberEditSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: cols2, gap: 'var(--space-md)' }}>
+              <div><label className="label">Nome completo</label><input type="text" name="name" className="input" defaultValue={editingMember.user_full_name || ''} required /></div>
+              <div><label className="label">E-mail</label><input type="email" name="email" className="input" defaultValue={editingMember.user_email || ''} required /></div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: cols2, gap: 'var(--space-md)' }}>
+              <div><label className="label">Senha</label><input type="password" name="password" className="input" placeholder="Deixe em branco para manter" /></div>
+              <div>
+                <label className="label">Papel</label>
+                <select name="role" className="input" defaultValue={editingMember.role}>
+                  <option value="member">Usuario</option>
+                  <option value="admin">Administrador</option>
+                  {editingMember.role === 'owner' && <option value="owner">Owner</option>}
+                </select>
+              </div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-sm)' }}>
+              <button type="button" className="btn" onClick={() => { setEditingMember(null); setErrorMsg(''); }}>
+                Cancelar
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={updateMemberMutation.isPending}>
+                <Save size={16} />{updateMemberMutation.isPending ? 'Salvando...' : 'Salvar usuario'}
               </button>
             </div>
           </form>

@@ -1,5 +1,7 @@
 import re
 
+from django.contrib.auth import get_user_model
+
 from rest_framework import serializers
 
 from tenants.models import NfseCredential, Tenant, TenantCompany, TenantMembership
@@ -168,6 +170,33 @@ class TenantMembershipSerializer(serializers.ModelSerializer):
         if obj.role in (TenantMembership.Role.OWNER, TenantMembership.Role.ADMIN):
             return list(obj.tenant.companies.filter(is_active=True).values_list("id", flat=True))
         return list(obj.company_accesses.values_list("company_id", flat=True))
+
+
+class TenantMemberUpdateSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=300)
+    email = serializers.EmailField()
+    role = serializers.ChoiceField(
+        choices=(
+            TenantMembership.Role.OWNER,
+            TenantMembership.Role.ADMIN,
+            TenantMembership.Role.MEMBER,
+        )
+    )
+    password = serializers.CharField(required=False, allow_blank=True)
+
+    def validate_email(self, value):
+        User = get_user_model()
+        membership: TenantMembership = self.context["membership"]
+        email = value.strip().lower()
+        if User.objects.filter(email__iexact=email).exclude(pk=membership.user_id).exists():
+            raise serializers.ValidationError("Ja existe um usuario com este e-mail.")
+        return email
+
+    def validate(self, attrs):
+        password = attrs.get("password", "")
+        if password and len(password) < 6:
+            raise serializers.ValidationError({"password": "A senha deve ter no minimo 6 caracteres."})
+        return attrs
 
 
 class NfseCredentialSerializer(serializers.ModelSerializer):

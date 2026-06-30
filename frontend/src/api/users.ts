@@ -52,6 +52,14 @@ export async function updateTenantMemberCompanies(id: number, companyIds: number
   return data;
 }
 
+export async function updateTenantMember(
+  id: number,
+  payload: { name: string; email: string; role: 'owner' | 'admin' | 'member'; password?: string }
+): Promise<TenantMember> {
+  const { data } = await api.patch<TenantMember>(`/tenant-memberships/${id}/member/`, payload);
+  return data;
+}
+
 export interface SystemStats {
   total_users: number;
   total_tenants: number;
