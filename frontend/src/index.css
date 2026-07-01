@@ -189,6 +189,16 @@ input[type="time"].input {
   appearance: none;
 }
 
+input[type="date"].input::-webkit-calendar-picker-indicator,
+input[type="datetime-local"].input::-webkit-calendar-picker-indicator {
+  opacity: 0;
+  position: absolute;
+  right: 0;
+  width: 2.5rem;
+  height: 100%;
+  cursor: pointer;
+}
+
 .input:focus,
 .select:focus,
 .textarea:focus {

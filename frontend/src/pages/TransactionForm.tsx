@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Calendar } from 'lucide-react';
 import { fetchTransactionById, createTransaction, updateTransaction, type CreateTransactionPayload } from '../api/transactions';
 import { fetchAccounts, type Account } from '../api/accounts';
 import { fetchCategories, type Category } from '../api/categories';
@@ -57,6 +58,7 @@ export default function TransactionForm() {
   const [recurrenceType, setRecurrenceType] = useState<RecurrenceType>('once');
   const [installmentCount, setInstallmentCount] = useState<number | string>('');
   const [scope, setScope] = useState<EditScope>('current');
+  const dateInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (transaction) {
@@ -184,7 +186,20 @@ export default function TransactionForm() {
           </div>
           <div>
             <label className="label">Data</label>
-            <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+            <div style={{ position: 'relative' }}>
+              <input
+                ref={dateInputRef}
+                className="input"
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                required
+                style={{ paddingRight: '2.5rem' }}
+              />
+              <button type="button" onClick={() => dateInputRef.current?.showPicker()} style={{ position: 'absolute', right: '0.65rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', color: 'var(--color-text-muted)', zIndex: 1, pointerEvents: 'none' }}>
+                <Calendar size={16} />
+              </button>
+            </div>
           </div>
         </div>
 
