@@ -100,7 +100,7 @@ export default function TransactionForm() {
         is_ignored: isIgnored,
         destination_account: type === 'transfer' ? Number(destinationAccount) : null,
         category: type !== 'transfer' && category ? Number(category) : null,
-        recurrence_type: isEditing ? transaction?.recurrence_type : recurrenceType,
+        recurrence_type: recurrenceType,
         installment_count: recurrenceType === 'installment' && !isEditing ? Number(installmentCount) : null,
         recurrence_interval: 1,
         recurrence_interval_unit: 'month',
@@ -222,16 +222,16 @@ export default function TransactionForm() {
         )}
 
         {/* Recorrência */}
-        {!isEditing && type !== 'transfer' && (
+        {type !== 'transfer' && (
           <div>
             <label className="label">Recorrência</label>
-            <div style={{ display: 'grid', gridTemplateColumns: recurrenceType === 'installment' ? '2fr 1fr' : '1fr', gap: '0.5rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: recurrenceType === 'installment' && !isEditing ? '2fr 1fr' : '1fr', gap: '0.5rem' }}>
               <select className="select" value={recurrenceType} onChange={(e) => setRecurrenceType(e.target.value as RecurrenceType)}>
                 <option value="once">Única</option>
                 <option value="monthly">Recorrente (Mensal)</option>
                 <option value="installment">Parcelada (Mensal)</option>
               </select>
-              {recurrenceType === 'installment' && (
+              {recurrenceType === 'installment' && !isEditing && (
                 <input className="input" type="number" min="2" max="480" placeholder="Parcelas" value={installmentCount} onChange={(e) => setInstallmentCount(e.target.value)} required />
               )}
             </div>
