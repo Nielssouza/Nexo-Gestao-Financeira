@@ -1,0 +1,80 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-nexo}
+      POSTGRES_USER: ${POSTGRES_USER:-nexo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nexo}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-nexo} -d ${POSTGRES_DB:-nexo}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-/api/v1}
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-nexo}:${POSTGRES_PASSWORD:-nexo}@db:5432/${POSTGRES_DB:-nexo}
+      REDIS_URL: redis://redis:6379/0
+      SERVE_REACT_APP: "true"
+    ports:
+      - "${WEB_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             gunicorn core.wsgi --bind 0.0.0.0:8000 --workers 3 --threads 2 --worker-class gthread --log-file -"
+    volumes:
+      - media_data:/app/backend/media
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-/api/v1}
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-nexo}:${POSTGRES_PASSWORD:-nexo}@db:5432/${POSTGRES_DB:-nexo}
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    command: celery -A core worker --loglevel=info --concurrency=2
+    volumes:
+      - media_data:/app/backend/media
+
+volumes:
+  postgres_data:
+  redis_data:
+  media_data:

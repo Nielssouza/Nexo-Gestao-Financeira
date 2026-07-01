@@ -53,6 +53,25 @@ E o backend deve permitir a origem do Vite:
 CORS_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 ```
 
+## Docker (opcional)
+
+Alternativa local/self-hosted que nao interfere no deploy Heroku (que usa buildpacks lendo o `Procfile` da raiz, nao os arquivos Docker abaixo).
+
+```powershell
+Copy-Item .env.example .env
+# edite .env com uma DJANGO_SECRET_KEY propria
+docker compose up --build
+```
+
+Sobe 4 servicos:
+
+- `db`: PostgreSQL 16
+- `redis`: Redis 7
+- `backend`: build multi-stage (React + Django), roda `migrate` e depois Gunicorn em `http://localhost:8000` (porta ajustavel via `WEB_PORT`)
+- `worker`: Celery, mesma imagem do backend
+
+O `Dockerfile` (raiz) compila o frontend e serve o build via Django/WhiteNoise no mesmo container, no mesmo padrao do dyno unico do Heroku. Dados de Postgres, Redis e uploads (`media/`) persistem em volumes nomeados.
+
 ## Deploy em um dyno Heroku
 
 Para rodar React + Django no mesmo dyno do app `nexo-django-drf`, use o repositório pela raiz e configure os buildpacks nesta ordem:

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Edit2, FolderPlus, List, Pin, PinOff, Plus, Search, StickyNote, Trash2, X } from 'lucide-react';
+import { Edit2, FolderPlus, List, MoreVertical, Pin, PinOff, Plus, Search, StickyNote, Trash2, X } from 'lucide-react';
 import {
   createNote,
   createNoteList,
@@ -17,7 +17,7 @@ import {
 
 type SelectedList = 'all' | 'unfiled' | number;
 
-const LIST_COLORS = ['#60a5fa', '#34d399', '#fbbf24', '#fb7185', '#a78bfa', '#f97316'];
+const DEFAULT_LIST_COLOR = '#6b7280';
 
 function NoteForm({
   initial,
@@ -112,7 +112,6 @@ function NoteForm({
 function ListRow({
   label,
   count,
-  color,
   active,
   onClick,
   onEdit,
@@ -120,7 +119,6 @@ function ListRow({
 }: {
   label: string;
   count: number;
-  color: string;
   active: boolean;
   onClick: () => void;
   onEdit?: () => void;
@@ -154,7 +152,7 @@ function ListRow({
         textAlign: 'left',
       }}
     >
-      <List size={14} style={{ color }} />
+      <List size={14} style={{ color: 'var(--color-text-muted)' }} />
       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.78rem', fontWeight: 600 }}>
         {label}
       </span>
@@ -338,7 +336,6 @@ export default function Notes() {
   const [showListForm, setShowListForm] = useState(false);
   const [editingList, setEditingList] = useState<NoteList | null>(null);
   const [listName, setListName] = useState('');
-  const [listColor, setListColor] = useState(LIST_COLORS[0]);
   const [listToDelete, setListToDelete] = useState<NoteList | null>(null);
 
   const { data: notes = [], isLoading } = useQuery({
@@ -385,7 +382,6 @@ export default function Notes() {
       setShowListForm(false);
       setEditingList(null);
       setListName('');
-      setListColor(LIST_COLORS[0]);
     },
   });
 
@@ -397,7 +393,6 @@ export default function Notes() {
       setShowListForm(false);
       setEditingList(null);
       setListName('');
-      setListColor(LIST_COLORS[0]);
     },
   });
 
@@ -443,7 +438,6 @@ export default function Notes() {
   const selectedListObject = typeof selectedList === 'number' ? lists.find((list) => list.id === selectedList) : null;
   const initialListId = typeof selectedList === 'number' ? selectedList : null;
   const selectedListLabel = selectedListObject?.name ?? (selectedList === 'unfiled' ? 'Sem lista' : 'Todas');
-  const selectedListColor = selectedListObject?.color ?? 'var(--color-text-muted)';
   const selectedListCount = selectedListObject
     ? (counts.byList.get(selectedListObject.id) ?? selectedListObject.notes_count ?? 0)
     : selectedList === 'unfiled'
@@ -466,23 +460,21 @@ export default function Notes() {
     const name = listName.trim();
     if (!name) return;
     if (editingList) {
-      updateListMutation.mutate({ id: editingList.id, payload: { name, color: listColor } });
+      updateListMutation.mutate({ id: editingList.id, payload: { name, color: DEFAULT_LIST_COLOR } });
     } else {
-      createListMutation.mutate({ name, color: listColor });
+      createListMutation.mutate({ name, color: DEFAULT_LIST_COLOR });
     }
   };
 
   const openNewListForm = () => {
     setEditingList(null);
     setListName('');
-    setListColor(LIST_COLORS[0]);
     setShowListForm(true);
   };
 
   const openEditListForm = (list: NoteList) => {
     setEditingList(list);
     setListName(list.name);
-    setListColor(list.color);
     setShowListForm(true);
   };
 
@@ -504,14 +496,13 @@ export default function Notes() {
           }}
         >
           <div style={{ padding: '0.65rem', display: 'grid', gap: '0.15rem' }}>
-            <ListRow label="Todas" count={counts.all} color="var(--color-text-muted)" active={selectedList === 'all'} onClick={() => setSelectedList('all')} />
-            <ListRow label="Sem lista" count={counts.unfiled} color="var(--color-text-muted)" active={selectedList === 'unfiled'} onClick={() => setSelectedList('unfiled')} />
+            <ListRow label="Todas" count={counts.all} active={selectedList === 'all'} onClick={() => setSelectedList('all')} />
+            <ListRow label="Sem lista" count={counts.unfiled} active={selectedList === 'unfiled'} onClick={() => setSelectedList('unfiled')} />
             {lists.map((list) => (
               <ListRow
                 key={list.id}
                 label={list.name}
                 count={counts.byList.get(list.id) ?? list.notes_count ?? 0}
-                color={list.color}
                 active={selectedList === list.id}
                 onClick={() => setSelectedList(list.id)}
                 onEdit={() => openEditListForm(list)}
@@ -563,7 +554,7 @@ export default function Notes() {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', minWidth: 0 }}>
-              <List size={17} style={{ color: selectedListColor, flexShrink: 0 }} />
+              <List size={17} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
               <div style={{ minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
                   <span style={{ fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -586,24 +577,60 @@ export default function Notes() {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
               {selectedListObject && (
-                <>
-                  <button
-                    type="button"
+                <details style={{ position: 'relative', flexShrink: 0 }}>
+                  <summary
                     className="btn btn-secondary"
-                    style={{ height: 36, padding: '0 0.8rem', fontSize: '0.8rem', flexShrink: 0 }}
-                    onClick={() => openEditListForm(selectedListObject)}
+                    title="Ações da lista"
+                    style={{
+                      height: 36,
+                      padding: '0 0.75rem',
+                      fontSize: '0.8rem',
+                      listStyle: 'none',
+                      userSelect: 'none',
+                    }}
                   >
-                    <Edit2 size={14} /> Editar lista
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-danger"
-                    style={{ height: 36, padding: '0 0.8rem', fontSize: '0.8rem', flexShrink: 0 }}
-                    onClick={() => setListToDelete(selectedListObject)}
+                    <MoreVertical size={15} /> Ações
+                  </summary>
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 'calc(100% + 0.35rem)',
+                      right: 0,
+                      zIndex: 20,
+                      minWidth: 168,
+                      display: 'grid',
+                      gap: 4,
+                      padding: 6,
+                      border: '1px solid var(--color-border)',
+                      borderRadius: 'var(--radius-md)',
+                      background: 'var(--color-bg-card)',
+                      boxShadow: 'var(--shadow-lg)',
+                    }}
                   >
-                    <Trash2 size={14} /> Excluir lista
-                  </button>
-                </>
+                    <button
+                      type="button"
+                      className="btn btn-ghost"
+                      style={{ justifyContent: 'flex-start', height: 34, padding: '0 0.65rem', fontSize: '0.8rem' }}
+                      onClick={(e) => {
+                        e.currentTarget.closest('details')?.removeAttribute('open');
+                        openEditListForm(selectedListObject);
+                      }}
+                    >
+                      <Edit2 size={14} /> Editar lista
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-ghost"
+                      style={{ justifyContent: 'flex-start', height: 34, padding: '0 0.65rem', fontSize: '0.8rem', color: 'var(--color-danger)' }}
+                      onClick={(e) => {
+                        e.currentTarget.closest('details')?.removeAttribute('open');
+                        setListToDelete(selectedListObject);
+                      }}
+                    >
+                      <Trash2 size={14} /> Excluir lista
+                    </button>
+                  </div>
+                </details>
               )}
               <button
                 type="button"
@@ -749,24 +776,6 @@ export default function Notes() {
                 onChange={(e) => setListName(e.target.value)}
                 autoFocus
               />
-              <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap' }}>
-                {LIST_COLORS.map((color) => (
-                  <button
-                    key={color}
-                    type="button"
-                    title={color}
-                    onClick={() => setListColor(color)}
-                    style={{
-                      width: 28,
-                      height: 28,
-                      borderRadius: 'var(--radius-full)',
-                      background: color,
-                      border: listColor === color ? '2px solid var(--color-text-primary)' : '2px solid transparent',
-                      cursor: 'pointer',
-                    }}
-                  />
-                ))}
-              </div>
               <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
                 <button
                   type="button"
