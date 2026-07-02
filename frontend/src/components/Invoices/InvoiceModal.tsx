@@ -76,7 +76,9 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
   const netValue = grossValue - totalWithheld;
 
   // launch financial
-  const [launchFinancial, setLaunchFinancial] = useState(!invoice);
+  const [launchFinancial, setLaunchFinancial] = useState(
+    !invoice || Boolean(invoice?.transaction || invoice?.expected_account)
+  );
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
 
   // service code combobox
@@ -115,6 +117,19 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
     enabled: isOpen,
   });
   const activeAccounts = accounts.filter((a) => a.is_active);
+
+  useEffect(() => {
+    setLaunchFinancial(!invoice || Boolean(invoice?.transaction || invoice?.expected_account));
+  }, [invoice]);
+
+  useEffect(() => {
+    if (!invoice?.expected_account) {
+      setSelectedAccount(null);
+      return;
+    }
+    const matchingAccount = activeAccounts.find((account) => account.id === invoice.expected_account) ?? null;
+    setSelectedAccount(matchingAccount);
+  }, [activeAccounts, invoice]);
 
   const selectedCodeDesc = serviceCodes.find((s) => s.code === serviceCode)?.description || '';
 
@@ -226,7 +241,7 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
-    if (!invoice && launchFinancial && !selectedAccount) {
+    if (launchFinancial && !selectedAccount) {
       setError('Selecione uma conta para o lançamento financeiro.');
       return;
     }
@@ -237,9 +252,7 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
 
     payload.gross_value = String(grossValue);
     payload.iss_withheld = formData.get('iss_withheld') === 'on' ? 'true' : 'false';
-    if (formData.has('launch_financial')) {
-      payload.launch_financial = formData.get('launch_financial') === 'on' ? 'true' : 'false';
-    }
+    payload.launch_financial = launchFinancial ? 'true' : 'false';
     if (formData.has('save_client')) {
       payload.save_client = formData.get('save_client') === 'on' ? 'true' : 'false';
     }
@@ -754,8 +767,7 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
             <textarea name="notes" className="textarea" rows={3} defaultValue={invoice?.notes} />
           </div>
 
-          {!invoice && (
-            <div style={{ marginBottom: 'var(--space-xl)' }}>
+          <div style={{ marginBottom: 'var(--space-xl)' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <input
                   type="checkbox"
@@ -789,11 +801,10 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
                 </div>
               )}
 
-              {selectedAccount && (
+              {selectedAccount && launchFinancial && (
                 <input type="hidden" name="expected_account" value={selectedAccount.id} />
               )}
-            </div>
-          )}
+          </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-sm)' }}>
             <button type="button" className="btn btn-secondary" onClick={onClose} disabled={loading}>Cancelar</button>
