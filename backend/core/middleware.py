@@ -30,7 +30,15 @@ class FinancialMaskingMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        response = self.get_response(request)
+        return self.get_response(request)
+
+    def process_template_response(self, request, response):
+        # DRF's Response.render() — which serializes .data into .content —
+        # runs inside _get_response, before __call__ gets the response back.
+        # process_template_response is the hook Django guarantees runs
+        # *before* that render(), so mutating .data here actually reaches
+        # the bytes sent to the client (mutating it in __call__ would be a
+        # silent no-op: .content is already baked by then).
         if getattr(request, "mask_financial_values", False) and hasattr(response, "data"):
             self._mask(response.data)
         return response

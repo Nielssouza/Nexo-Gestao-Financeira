@@ -1,8 +1,17 @@
+import json
+
 import pytest
 from django.urls import reverse
 from rest_framework.test import APIClient
 
 from common.api_mixins import is_view_only_superuser
+
+
+def body_of(response):
+    """Parse the actual rendered response bytes (not response.data — that's the
+    live in-memory dict, and mutating it after render() is a silent no-op that
+    never reaches the client; this is what a real browser would receive)."""
+    return json.loads(response.content)
 
 pytestmark = pytest.mark.django_db
 
@@ -49,7 +58,8 @@ def test_superuser_browsing_foreign_tenant_gets_masked_amounts(baker):
     response = client.get(url, HTTP_X_TENANT_ID=str(tenant.id))
 
     assert response.status_code == 200
-    results = response.data.get("results", response.data) if isinstance(response.data, dict) else response.data
+    body = body_of(response)
+    results = body.get("results", body) if isinstance(body, dict) else body
     account_data = next(a for a in results if a["name"] == "Conta Alheia")
 
     assert account_data["initial_balance"] is None
@@ -70,7 +80,8 @@ def test_owner_viewing_own_tenant_sees_real_amounts(baker):
     response = client.get(url, HTTP_X_TENANT_ID=str(tenant.id))
 
     assert response.status_code == 200
-    results = response.data.get("results", response.data) if isinstance(response.data, dict) else response.data
+    body = body_of(response)
+    results = body.get("results", body) if isinstance(body, dict) else body
     account_data = next(a for a in results if a["name"] == "Minha Conta")
 
     assert account_data["initial_balance"] == "500.00"
@@ -87,6 +98,7 @@ def test_dashboard_masked_flag_and_amounts_for_foreign_tenant(baker):
     response = client.get(url, HTTP_X_TENANT_ID=str(tenant.id))
 
     assert response.status_code == 200
-    assert response.data["masked"] is True
-    assert response.data["kpis"]["user_balance"] is None
-    assert response.data["alerts"]["consolidated_balance"] is None
+    body = body_of(response)
+    assert body["masked"] is True
+    assert body["kpis"]["user_balance"] is None
+    assert body["alerts"]["consolidated_balance"] is None
