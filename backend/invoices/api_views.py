@@ -102,8 +102,10 @@ class InvoiceViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
             from rest_framework.exceptions import ValidationError
             raise ValidationError({"detail": "Apenas faturas emitidas podem ser editadas."})
 
-        launch_financial = serializer.validated_data.pop("launch_financial", False)
+        launch_financial = serializer.validated_data.pop("launch_financial", None)
         serializer.validated_data.pop("save_client", None)
+        if launch_financial is None:
+            launch_financial = bool(serializer.instance.transaction_id)
         invoice = serializer.save()
 
         sync_invoice_transaction(

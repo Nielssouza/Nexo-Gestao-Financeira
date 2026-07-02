@@ -119,6 +119,67 @@ class InvoiceApiViewSetTest(TestCase):
         self.assertIsNotNone(invoice.transaction)
         self.assertTrue(Transaction.objects.filter(pk=invoice.transaction_id).exists())
 
+    def test_update_preserves_linked_transaction_when_launch_financial_is_omitted(self):
+        transaction = Transaction.objects.create(
+            user=self.user,
+            tenant=self.tenant,
+            transaction_type=Transaction.TransactionType.INCOME,
+            amount="500.00",
+            date=date(2026, 6, 30),
+            account=self.account,
+            description="Fatura 0001/2026 - Cliente API",
+            is_cleared=False,
+            recurrence_type=Transaction.RecurrenceType.ONCE,
+        )
+        invoice = self._create_invoice(
+            expected_account=self.account,
+            transaction=transaction,
+        )
+
+        response = self.client.patch(
+            f"/api/v1/invoices/{invoice.pk}/",
+            data={
+                "due_date": "2026-07-15",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        invoice.refresh_from_db()
+        transaction.refresh_from_db()
+        self.assertEqual(invoice.transaction_id, transaction.id)
+        self.assertEqual(transaction.date, date(2026, 7, 15))
+
+    def test_update_removes_linked_transaction_when_launch_financial_is_false(self):
+        transaction = Transaction.objects.create(
+            user=self.user,
+            tenant=self.tenant,
+            transaction_type=Transaction.TransactionType.INCOME,
+            amount="500.00",
+            date=date(2026, 6, 30),
+            account=self.account,
+            description="Fatura 0001/2026 - Cliente API",
+            is_cleared=False,
+            recurrence_type=Transaction.RecurrenceType.ONCE,
+        )
+        invoice = self._create_invoice(
+            expected_account=self.account,
+            transaction=transaction,
+        )
+
+        response = self.client.patch(
+            f"/api/v1/invoices/{invoice.pk}/",
+            data={
+                "launch_financial": False,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        invoice.refresh_from_db()
+        self.assertIsNone(invoice.transaction_id)
+        self.assertFalse(Transaction.objects.filter(pk=transaction.id).exists())
+
     def test_print_data_endpoint_returns_invoice_and_tenant(self):
         invoice = self._create_invoice()
         response = self.client.get(f"/api/v1/invoices/{invoice.pk}/print_data/")

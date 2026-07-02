@@ -55,10 +55,10 @@ class InvoiceSerializer(serializers.ModelSerializer):
 
     # Write-only control field
     launch_financial = serializers.BooleanField(
-        write_only=True, required=False, default=False
+        write_only=True, required=False
     )
     save_client = serializers.BooleanField(
-        write_only=True, required=False, default=False
+        write_only=True, required=False
     )
 
     # Related names

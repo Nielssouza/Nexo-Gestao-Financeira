@@ -237,8 +237,12 @@ export default function InvoiceModal({ invoice, isOpen, onClose }: InvoiceModalP
 
     payload.gross_value = String(grossValue);
     payload.iss_withheld = formData.get('iss_withheld') === 'on' ? 'true' : 'false';
-    payload.launch_financial = formData.get('launch_financial') === 'on' ? 'true' : 'false';
-    payload.save_client = formData.get('save_client') === 'on' ? 'true' : 'false';
+    if (formData.has('launch_financial')) {
+      payload.launch_financial = formData.get('launch_financial') === 'on' ? 'true' : 'false';
+    }
+    if (formData.has('save_client')) {
+      payload.save_client = formData.get('save_client') === 'on' ? 'true' : 'false';
+    }
 
     if (!payload.iss_rate) delete payload.iss_rate;
     if (!payload.pis_rate) delete payload.pis_rate;
