@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useViewMode } from '../contexts/ViewModeContext';
@@ -52,6 +53,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [bellOpen, setBellOpen] = useState(false);
+  const [bellMenuPos, setBellMenuPos] = useState({ top: 0, right: 0 });
+  const bellButtonRef = useRef<HTMLButtonElement>(null);
   const [chartsOpen, setChartsOpen] = useState(false);
   const [scopeVersion, setScopeVersion] = useState(0);
   const { isMobile } = useViewMode();
@@ -105,6 +108,23 @@ export default function Dashboard() {
   const navigateMonth = (delta: number) => {
     setSearchParams({ month: shiftMonth(monthParam, delta) });
   };
+
+  useEffect(() => {
+    if (!bellOpen) return;
+    const updatePosition = () => {
+      const rect = bellButtonRef.current?.getBoundingClientRect();
+      if (rect) {
+        setBellMenuPos({ top: rect.bottom + 8, right: window.innerWidth - rect.right });
+      }
+    };
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [bellOpen]);
 
   if (loading) {
     return (
@@ -171,7 +191,7 @@ export default function Dashboard() {
               <BarChart2 size={20} />
             </button>
             <div style={{ position: 'relative' }}>
-              <button className="btn btn-ghost btn-icon" onClick={() => setBellOpen((v) => !v)} title="Vencimentos" style={{ position: 'relative' }}>
+              <button ref={bellButtonRef} className="btn btn-ghost btn-icon" onClick={() => setBellOpen((v) => !v)} title="Vencimentos" style={{ position: 'relative' }}>
                 <Bell size={20} />
                 {data.due_notifications.count > 0 && (
                   <span style={{ position: 'absolute', top: 2, right: 2, minWidth: 16, height: 16, borderRadius: 8, background: data.due_notifications.overdue_count > 0 ? 'var(--color-danger)' : 'var(--color-accent)', color: '#fff', fontSize: '0.6rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 3px', lineHeight: 1 }}>
@@ -179,8 +199,10 @@ export default function Dashboard() {
                   </span>
                 )}
               </button>
-              {bellOpen && (
-                <div className="card animate-fade-in" style={{ position: 'absolute', top: 'calc(100% + 0.5rem)', right: 0, width: 'min(320px, calc(100vw - 2rem))', maxHeight: 'min(400px, calc(100vh - 10rem))', overflowY: 'auto', zIndex: 50 }}>
+              {bellOpen && createPortal(
+                <>
+                  <div onClick={() => setBellOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 999 }} />
+                  <div className="card animate-fade-in" style={{ position: 'fixed', top: bellMenuPos.top, right: bellMenuPos.right, width: 'min(320px, calc(100vw - 2rem))', maxHeight: 'min(400px, calc(100vh - 10rem))', overflowY: 'auto', zIndex: 1000, boxShadow: '0 10px 28px rgba(2, 6, 23, 0.45)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-md)' }}>
                     <h3 style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>
                       <Bell size={14} />
@@ -237,6 +259,8 @@ export default function Dashboard() {
                     </div>
                   )}
                 </div>
+                </>,
+                document.body,
               )}
             </div>
           </div>
