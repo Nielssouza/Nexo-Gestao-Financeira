@@ -35,7 +35,7 @@ npm install
 npm run dev
 ```
 
-O dev server roda em `http://localhost:5173`.
+O dev server roda em `http://127.0.0.1:5174`.
 
 ## Build
 

@@ -10,7 +10,7 @@ def main():
     env_file = Path(__file__).resolve().parent / ".env"
     if env_file.exists():
         from dotenv import load_dotenv
-        load_dotenv(env_file)
+        load_dotenv(env_file, override=True)
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
     try:
         from django.core.management import execute_from_command_line

@@ -11,5 +11,7 @@ db.sqlite3
 .venv/
 venv/
 .env
+.env.local
+frontend/.env.local
 staticfiles/
 media/

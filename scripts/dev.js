@@ -130,6 +130,9 @@ async function main() {
     cwd: frontendDir,
     env: {
       VITE_API_URL: process.env.VITE_API_URL || '/api/v1',
+      VITE_PROXY_TARGET: process.env.VITE_PROXY_TARGET || backendUrl,
+      BACKEND_HOST: backendHost,
+      BACKEND_PORT: backendPort,
     },
   });
 }

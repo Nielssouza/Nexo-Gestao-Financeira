@@ -266,9 +266,11 @@ class SystemAllCompaniesView(APIView):
 
 
 import os
+import re
 import subprocess
 import tempfile
 import shutil
+import tarfile
 from rest_framework.parsers import MultiPartParser
 
 def get_pg_bin(bin_name):
@@ -283,6 +285,147 @@ def get_pg_bin(bin_name):
         if matches:
             return matches[-1] # Pick the latest version
     return bin_name
+
+
+def detect_backup_format(file_path: str, original_name: str = "") -> str:
+    original_name = (original_name or "").lower()
+    if original_name.endswith(".sql"):
+        return "sql"
+    if original_name.endswith((".dump", ".backup", ".tar")):
+        return "archive"
+
+    with open(file_path, "rb") as fh:
+        head = fh.read(4096)
+
+    if head.startswith(b"PGDMP"):
+        return "archive"
+
+    try:
+        if tarfile.is_tarfile(file_path):
+            return "archive"
+    except tarfile.TarError:
+        pass
+
+    if b"\x00" in head:
+        return "archive"
+
+    text = head.decode("utf-8", errors="ignore").lstrip("\ufeff").lower()
+    sql_markers = (
+        "postgresql database dump",
+        "set search_path",
+        "create table",
+        "create schema",
+        "insert into",
+        "copy ",
+        "alter table",
+        "begin;",
+    )
+    if any(marker in text for marker in sql_markers):
+        return "sql"
+
+    return "archive"
+
+
+def append_pgoptions(env: dict[str, str], db_settings: dict) -> None:
+    options = db_settings.get("OPTIONS", {})
+    pgoptions = options.get("options", "").strip()
+    if not pgoptions:
+        return
+    existing = env.get("PGOPTIONS", "").strip()
+    env["PGOPTIONS"] = f"{existing} {pgoptions}".strip() if existing else pgoptions
+
+
+def summarize_restore_error(result: subprocess.CompletedProcess) -> str:
+    combined = "\n".join(
+        part.strip()
+        for part in (result.stderr or "", result.stdout or "")
+        if part and part.strip()
+    ).strip()
+    if not combined:
+        return "Falha sem detalhes retornados pelo PostgreSQL."
+
+    lines = [line.strip() for line in combined.splitlines() if line.strip()]
+    priority_lines = [
+        line for line in lines
+        if any(marker in line.lower() for marker in ("error:", "fatal:", "erro:", "failed:", "could not"))
+    ]
+    if priority_lines:
+        return "\n".join(priority_lines[-8:])[-4000:]
+    return "\n".join(lines[-12:])[-4000:]
+
+
+def get_target_schema(db_settings: dict) -> str:
+    env_schema = os.getenv("POSTGRES_SCHEMA", "").strip()
+    if env_schema:
+        return env_schema
+
+    options = db_settings.get("OPTIONS", {})
+    raw_options = options.get("options", "")
+    match = re.search(r"search_path\s*=\s*([A-Za-z_][A-Za-z0-9_]*)", raw_options)
+    if match:
+        return match.group(1)
+    return ""
+
+
+def quote_pg_identifier(identifier: str) -> str:
+    return '"' + identifier.replace('"', '""') + '"'
+
+
+def make_temp_restore_schema(target_schema: str) -> str:
+    suffix = "__restore_tmp"
+    max_identifier_length = 63
+    base = target_schema[: max_identifier_length - len(suffix)]
+    return f"{base}{suffix}"
+
+
+def rewrite_restore_sql(sql_text: str, target_schema: str) -> str:
+    if not target_schema or target_schema == "public":
+        return sql_text
+
+    quoted_target_schema = quote_pg_identifier(target_schema)
+    rewritten = sql_text
+    rewritten = re.sub(
+        r'(?im)^\s*SET\s+search_path\s*=\s*(?:"?public"?)\s*,\s*pg_catalog\s*;\s*$',
+        f"SET search_path = {target_schema}, pg_catalog;",
+        rewritten,
+    )
+    rewritten = re.sub(
+        r'(?im)^\s*SET\s+search_path\s*=\s*(?:"?public"?)\s*;\s*$',
+        f"SET search_path = {target_schema};",
+        rewritten,
+    )
+    rewritten = re.sub(
+        r'(?im)^\s*SELECT\s+pg_catalog\.set_config\(\s*\'search_path\'\s*,\s*\'\'\s*,\s*false\s*\)\s*;\s*$',
+        f"SELECT pg_catalog.set_config('search_path', '{target_schema}, public', false);",
+        rewritten,
+    )
+    rewritten = re.sub(
+        r'(?im)\bSCHEMA\s+(?:"public"|public)(?=\s|;)',
+        f"SCHEMA {quoted_target_schema}",
+        rewritten,
+    )
+    rewritten = rewritten.replace('"public".', f'{quoted_target_schema}.')
+    rewritten = re.sub(r'(?<![A-Za-z0-9_"])public\.', f'{quoted_target_schema}.', rewritten)
+    return rewritten
+
+
+def prepare_restore_sql(sql_text: str, target_schema: str) -> str:
+    rewritten = rewrite_restore_sql(sql_text, target_schema)
+    if not target_schema or target_schema == "public":
+        return rewritten
+    return "CREATE SCHEMA IF NOT EXISTS public;\n" + rewritten
+
+
+def run_pg_command(command: list[str], env: dict[str, str], **kwargs) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        command,
+        env=env,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        **kwargs,
+    )
 
 class RestoreBackupView(APIView):
     """POST /api/v1/system/restore-backup/ uploads a postgres backup file and restores it."""
@@ -302,6 +445,7 @@ class RestoreBackupView(APIView):
             )
 
         tmp_path = None
+        result = None
         try:
             with tempfile.NamedTemporaryFile(delete=False, suffix=".backup") as tmp:
                 for chunk in file_obj.chunks():
@@ -317,21 +461,106 @@ class RestoreBackupView(APIView):
             env = os.environ.copy()
             if db_password:
                 env["PGPASSWORD"] = db_password
+            append_pgoptions(env, db_settings)
 
-            is_sql = file_obj.name.lower().endswith('.sql')
+            backup_format = detect_backup_format(tmp_path, file_obj.name)
             psql_bin = get_pg_bin('psql')
             pg_restore_bin = get_pg_bin('pg_restore')
+            target_schema = get_target_schema(db_settings)
 
-            if is_sql:
+            if target_schema and target_schema != "public":
+                temp_schema = make_temp_restore_schema(target_schema)
+                quoted_target_schema = quote_pg_identifier(target_schema)
+                quoted_temp_schema = quote_pg_identifier(temp_schema)
+
+                temp_cleanup_cmd = [
+                    psql_bin,
+                    "-v", "ON_ERROR_STOP=1",
+                    "-U", db_user,
+                    "-h", db_host,
+                    "-p", str(db_port),
+                    "-d", db_name,
+                    "-c",
+                    (
+                        "CREATE SCHEMA IF NOT EXISTS public; "
+                        f"DROP SCHEMA IF EXISTS {quoted_temp_schema} CASCADE; "
+                        f"CREATE SCHEMA {quoted_temp_schema};"
+                    ),
+                ]
+                temp_cleanup_result = run_pg_command(temp_cleanup_cmd, env)
+                if temp_cleanup_result.returncode != 0:
+                    result = temp_cleanup_result
+                else:
+                    if backup_format == "sql":
+                        with open(tmp_path, "r", encoding="utf-8", errors="replace") as fh:
+                            restore_sql = fh.read()
+                    else:
+                        export_cmd = [
+                            pg_restore_bin,
+                            "--clean",
+                            "--if-exists",
+                            "--no-owner",
+                            "--no-privileges",
+                            "-f", "-",
+                            tmp_path,
+                        ]
+                        export_result = run_pg_command(export_cmd, env)
+                        if export_result.returncode != 0:
+                            result = export_result
+                            restore_sql = ""
+                        else:
+                            restore_sql = export_result.stdout
+
+                    if temp_cleanup_result.returncode == 0 and (result is None or result.returncode == 0):
+                        rewritten_sql = prepare_restore_sql(restore_sql, temp_schema)
+                        apply_cmd = [
+                            psql_bin,
+                            "-v", "ON_ERROR_STOP=1",
+                            "-U", db_user,
+                            "-h", db_host,
+                            "-p", str(db_port),
+                            "-d", db_name,
+                        ]
+                        result = run_pg_command(apply_cmd, env, input=rewritten_sql)
+
+                    if result is not None and result.returncode == 0:
+                        finalize_cmd = [
+                            psql_bin,
+                            "-v", "ON_ERROR_STOP=1",
+                            "-U", db_user,
+                            "-h", db_host,
+                            "-p", str(db_port),
+                            "-d", db_name,
+                            "-c",
+                            (
+                                f"DROP SCHEMA IF EXISTS {quoted_target_schema} CASCADE; "
+                                f"ALTER SCHEMA {quoted_temp_schema} RENAME TO {quoted_target_schema};"
+                            ),
+                        ]
+                        result = run_pg_command(finalize_cmd, env)
+
+                    if result is not None and result.returncode != 0:
+                        drop_temp_cmd = [
+                            psql_bin,
+                            "-v", "ON_ERROR_STOP=1",
+                            "-U", db_user,
+                            "-h", db_host,
+                            "-p", str(db_port),
+                            "-d", db_name,
+                            "-c", f"DROP SCHEMA IF EXISTS {quoted_temp_schema} CASCADE;",
+                        ]
+                        run_pg_command(drop_temp_cmd, env)
+            elif backup_format == "sql":
                 cmd = [
                     psql_bin,
+                    "-v", "ON_ERROR_STOP=1",
                     "-U", db_user,
                     "-h", db_host,
                     "-p", str(db_port),
                     "-d", db_name,
                     "-f", tmp_path
                 ]
-                result = subprocess.run(cmd, env=env, capture_output=True, text=True, encoding="utf-8", errors="replace")
+                result = run_pg_command(cmd, env)
             else:
                 cmd = [
                     pg_restore_bin,
@@ -346,11 +575,19 @@ class RestoreBackupView(APIView):
                     "-1",
                     tmp_path
                 ]
-                result = subprocess.run(cmd, env=env, capture_output=True, text=True, encoding="utf-8", errors="replace")
+                result = run_pg_command(cmd, env)
 
-            if result.returncode == 0:
+            if result is not None and result.returncode == 0:
                 return Response({"detail": "Backup restaurado com sucesso!"}, status=status.HTTP_200_OK)
             else:
+                error_output = summarize_restore_error(result) if result is not None else "Falha sem retorno do processo de restore."
+                return Response(
+                    {
+                        "detail": "Erro ao restaurar backup. Verifique se o arquivo e um dump valido do PostgreSQL.",
+                        "error": error_output,
+                    },
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
                 return Response(
                     {"detail": "Erro ao restaurar backup. Verifique se o arquivo é um dump válido do pg_dump."},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR,

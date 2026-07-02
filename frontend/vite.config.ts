@@ -1,8 +1,15 @@
 import { defineConfig } from 'vitest/config'
+import { loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
-export default defineConfig(() => ({
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '');
+  const backendHost = env.BACKEND_HOST || process.env.BACKEND_HOST || '127.0.0.1';
+  const backendPort = env.BACKEND_PORT || process.env.BACKEND_PORT || '8003';
+  const proxyTarget = env.VITE_PROXY_TARGET || process.env.VITE_PROXY_TARGET || `http://${backendHost}:${backendPort}`;
+
+  return ({
   base: '/',
   build: {
     outDir: 'dist',
@@ -62,15 +69,15 @@ export default defineConfig(() => ({
   ],
   server: {
     host: '127.0.0.1',
-    port: 5173,
+    port: 5174,
     strictPort: true,
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:8003',
+        target: proxyTarget,
         changeOrigin: true,
       },
       '/media': {
-        target: 'http://127.0.0.1:8003',
+        target: proxyTarget,
         changeOrigin: true,
       },
     },
@@ -85,4 +92,5 @@ export default defineConfig(() => ({
     globals: true,
     setupFiles: './src/test/setup.ts',
   },
-}));
+  });
+});

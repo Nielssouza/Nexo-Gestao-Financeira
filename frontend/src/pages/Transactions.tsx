@@ -51,6 +51,8 @@ export default function Transactions() {
   const navigate = useNavigate();
   const [clearingTx, setClearingTx] = useState<Transaction | null>(null);
   const [deletingTx, setDeletingTx] = useState<Transaction | null>(null);
+  const [deleteScope, setDeleteScope] = useState<'current' | 'all'>('current');
+  const [errorModalMessage, setErrorModalMessage] = useState<string | null>(null);
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -63,6 +65,12 @@ export default function Transactions() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (deletingTx) {
+      setDeleteScope('current');
+    }
+  }, [deletingTx]);
 
   const queryClient = useQueryClient();
 
@@ -111,7 +119,7 @@ export default function Transactions() {
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
     onError: (err: any) => {
-      alert(err.response?.data?.detail || 'Erro ao excluir transação.');
+      setErrorModalMessage(err.response?.data?.detail || 'Erro ao excluir transação.');
     },
   });
 
@@ -168,6 +176,9 @@ export default function Transactions() {
     }
     return groups;
   }, [transactions]);
+
+  const isRecurringTransaction = (tx: Transaction | null) =>
+    Boolean(tx && tx.recurrence_type && tx.recurrence_type !== 'once');
 
   return (
     <div className="transactions-body animate-fade-in" style={{ padding: '1.5rem 1.25rem 0', minHeight: '100vh' }}>
@@ -445,6 +456,35 @@ export default function Transactions() {
             <p style={{ fontSize: '0.88rem', color: 'var(--color-text-secondary)', margin: 0 }}>
               Tem certeza que deseja excluir esta transação? Esta ação não pode ser desfeita.
             </p>
+            {isRecurringTransaction(deletingTx) && (
+              <div style={{ display: 'grid', gap: '0.65rem', padding: '0.85rem 1rem', background: 'var(--color-bg-elevated)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)' }}>
+                <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                  Excluir em:
+                </span>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
+                  <input
+                    type="radio"
+                    name="delete-scope"
+                    value="current"
+                    checked={deleteScope === 'current'}
+                    onChange={() => setDeleteScope('current')}
+                    style={{ accentColor: 'var(--color-accent)' }}
+                  />
+                  Somente esta transacao
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
+                  <input
+                    type="radio"
+                    name="delete-scope"
+                    value="all"
+                    checked={deleteScope === 'all'}
+                    onChange={() => setDeleteScope('all')}
+                    style={{ accentColor: 'var(--color-accent)' }}
+                  />
+                  Esta e as proximas recorrencias
+                </label>
+              </div>
+            )}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
               <button
                 type="button"
@@ -458,11 +498,54 @@ export default function Transactions() {
                 className="btn btn-danger"
                 disabled={deleteMutation.isPending}
                 onClick={() => {
-                  deleteMutation.mutate({ id: deletingTx.id });
+                  let unlockPassword: string | undefined;
+                  if (isMonthClosed) {
+                    const password = window.prompt('Mes fechado. Informe sua senha para confirmar esta alteracao:');
+                    if (password === null) return;
+                    unlockPassword = password || undefined;
+                  }
+                  deleteMutation.mutate({
+                    id: deletingTx.id,
+                    scope: isRecurringTransaction(deletingTx) ? deleteScope : 'current',
+                    unlock_password: unlockPassword,
+                  });
                   setDeletingTx(null);
                 }}
               >
                 {deleteMutation.isPending ? 'Excluindo...' : 'Excluir'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {errorModalMessage && createPortal(
+        <div
+          onClick={() => setErrorModalMessage(null)}
+          style={{
+            position: 'fixed', inset: 0,
+            background: 'rgba(0,0,0,0.6)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 10000, padding: '1rem',
+          }}
+        >
+          <div
+            className="card"
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: '100%', maxWidth: 420, padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}
+          >
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>Não foi possível concluir</h3>
+            <p style={{ fontSize: '0.88rem', color: 'var(--color-text-secondary)', margin: 0, lineHeight: 1.55 }}>
+              {errorModalMessage}
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => setErrorModalMessage(null)}
+              >
+                OK
               </button>
             </div>
           </div>

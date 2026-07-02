@@ -12,7 +12,7 @@ export const options = {
 };
 
 // URL padrão para teste local, ou a que for informada no terminal
-const BASE_URL = __ENV.BASE_URL || 'http://127.0.0.1:5173';
+const BASE_URL = __ENV.BASE_URL || 'http://127.0.0.1:5174';
 // API no backend local, se não informada
 const API_URL = __ENV.API_URL || 'http://127.0.0.1:8003/api/v1';
 

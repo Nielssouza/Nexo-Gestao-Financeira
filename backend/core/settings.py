@@ -148,6 +148,7 @@ use_sqlite = env_bool("USE_SQLITE", default=False)
 database_url = os.getenv("DATABASE_URL", "").strip()
 postgres_hint_enabled = bool(database_url or os.getenv("POSTGRES_DB") or os.getenv("POSTGRES_HOST"))
 use_postgres = env_bool("USE_POSTGRES", default=postgres_hint_enabled)
+postgres_schema = os.getenv("POSTGRES_SCHEMA", "").strip()
 
 if use_sqlite:
     DATABASES = {
@@ -186,6 +187,16 @@ else:
             "NAME": BASE_DIR / "db.sqlite3",
         }
     }
+
+if DATABASES["default"]["ENGINE"] == "django.db.backends.postgresql" and postgres_schema:
+    db_options = DATABASES["default"].setdefault("OPTIONS", {})
+    existing_conn_options = db_options.get("options", "").strip()
+    search_path_option = f"-c search_path={postgres_schema},public"
+    db_options["options"] = (
+        f"{existing_conn_options} {search_path_option}".strip()
+        if existing_conn_options
+        else search_path_option
+    )
 
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -377,7 +388,7 @@ SIMPLE_JWT = {
 # CORS: allow the separately deployed React app to call the API.
 CORS_ALLOWED_ORIGINS = env_list(
     "CORS_ALLOWED_ORIGINS",
-    "http://localhost:5173,http://127.0.0.1:5173",
+    "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174",
 )
 CORS_ALLOWED_ORIGIN_REGEXES = env_list("CORS_ALLOWED_ORIGIN_REGEXES", "")
 CORS_ALLOW_CREDENTIALS = env_bool("CORS_ALLOW_CREDENTIALS", default=True)
