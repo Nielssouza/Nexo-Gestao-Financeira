@@ -41,22 +41,111 @@ class TransactionViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
             return True
         return False
 
+    def _series_reference_value(self, reference_transaction, field_name):
+        if isinstance(reference_transaction, dict):
+            return reference_transaction[field_name]
+        return getattr(reference_transaction, field_name)
+
+    def _snapshot_transaction(self, transaction):
+        tracked_fields = (
+            "pk",
+            "date",
+            "transaction_type",
+            "amount",
+            "account",
+            "destination_account",
+            "category",
+            "description",
+            "recurrence_type",
+            "recurrence_interval",
+            "recurrence_interval_unit",
+            "installment_count",
+        )
+        return {
+            field_name: getattr(transaction, field_name)
+            for field_name in tracked_fields
+        }
+
     def _get_related_occurrences_queryset(self, reference_transaction):
         return Transaction.objects.filter(
             tenant=self.get_tenant(),
-            transaction_type=reference_transaction.transaction_type,
-            amount=reference_transaction.amount,
-            account=reference_transaction.account,
-            destination_account=reference_transaction.destination_account,
-            category=reference_transaction.category,
-            description=reference_transaction.description,
-            recurrence_type=reference_transaction.recurrence_type,
-            recurrence_interval=reference_transaction.recurrence_interval,
-            recurrence_interval_unit=reference_transaction.recurrence_interval_unit,
-            installment_count=reference_transaction.installment_count,
+            transaction_type=self._series_reference_value(reference_transaction, "transaction_type"),
+            amount=self._series_reference_value(reference_transaction, "amount"),
+            account=self._series_reference_value(reference_transaction, "account"),
+            destination_account=self._series_reference_value(reference_transaction, "destination_account"),
+            category=self._series_reference_value(reference_transaction, "category"),
+            description=self._series_reference_value(reference_transaction, "description"),
+            recurrence_type=self._series_reference_value(reference_transaction, "recurrence_type"),
+            recurrence_interval=self._series_reference_value(reference_transaction, "recurrence_interval"),
+            recurrence_interval_unit=self._series_reference_value(reference_transaction, "recurrence_interval_unit"),
+            installment_count=self._series_reference_value(reference_transaction, "installment_count"),
             is_cleared=False,
-            date__gte=reference_transaction.date,
-        ).exclude(pk=reference_transaction.pk)
+            date__gte=self._series_reference_value(reference_transaction, "date"),
+        ).exclude(pk=self._series_reference_value(reference_transaction, "pk"))
+
+    def _apply_update_to_future_occurrences(self, transaction, related_queryset):
+        future_occurrences = list(related_queryset.order_by("date", "pk"))
+        interval_mode, interval_step, desired_count = transaction._recurrence_plan()
+
+        if (
+            transaction.recurrence_type == Transaction.RecurrenceType.ONCE
+            or interval_step <= 0
+            or desired_count <= 0
+        ):
+            if future_occurrences:
+                Transaction.objects.filter(pk__in=[occurrence.pk for occurrence in future_occurrences]).delete()
+            return
+
+        retained_occurrences = future_occurrences[:desired_count]
+        discarded_occurrence_ids = [occurrence.pk for occurrence in future_occurrences[desired_count:]]
+        if discarded_occurrence_ids:
+            Transaction.objects.filter(pk__in=discarded_occurrence_ids).delete()
+
+        base_installment_number = transaction.installment_number or 1
+        updated_fields = [
+            "transaction_type",
+            "amount",
+            "date",
+            "account",
+            "destination_account",
+            "category",
+            "description",
+            "is_ignored",
+            "recurrence_type",
+            "recurrence_interval",
+            "recurrence_interval_unit",
+            "installment_count",
+            "installment_number",
+            "updated_at",
+        ]
+
+        for index, occurrence in enumerate(retained_occurrences, start=1):
+            occurrence.transaction_type = transaction.transaction_type
+            occurrence.amount = transaction.amount
+            occurrence.date = transaction._add_interval_safe(
+                transaction.date,
+                interval_step * index,
+                interval_mode,
+            )
+            occurrence.account = transaction.account
+            occurrence.destination_account = transaction.destination_account
+            occurrence.category = transaction.category
+            occurrence.description = transaction.description
+            occurrence.is_ignored = transaction.is_ignored
+            occurrence.recurrence_type = transaction.recurrence_type
+            occurrence.recurrence_interval = transaction.recurrence_interval
+            occurrence.recurrence_interval_unit = transaction.recurrence_interval_unit
+            occurrence.installment_count = transaction.installment_count
+            occurrence.installment_number = (
+                base_installment_number + index
+                if transaction.recurrence_type == Transaction.RecurrenceType.INSTALLMENT
+                else None
+            )
+
+        if retained_occurrences:
+            Transaction.objects.bulk_update(retained_occurrences, updated_fields)
+
+        transaction.generate_future_occurrences()
 
     def perform_create(self, serializer):
         unlock_password = serializer.validated_data.pop("unlock_password", None)
@@ -76,6 +165,11 @@ class TransactionViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
         scope = serializer.validated_data.pop("scope", "current")
         
         old_instance = self.get_object()
+        future_occurrences_queryset = None
+        if scope == "all":
+            future_occurrences_queryset = self._get_related_occurrences_queryset(
+                self._snapshot_transaction(old_instance)
+            )
 
         if not self._check_month_lock(old_instance.date, unlock_password):
             from rest_framework.exceptions import ValidationError
@@ -83,26 +177,8 @@ class TransactionViewSet(TenantQuerySetMixin, viewsets.ModelViewSet):
 
         transaction = serializer.save()
 
-        if scope == "all":
-            from django.db.models import F
-            update_payload = {
-                "transaction_type": transaction.transaction_type,
-                "amount": transaction.amount,
-                "account": transaction.account,
-                "destination_account": transaction.destination_account,
-                "category": transaction.category,
-                "description": transaction.description,
-                "recurrence_type": transaction.recurrence_type,
-                "recurrence_interval": transaction.recurrence_interval,
-                "recurrence_interval_unit": transaction.recurrence_interval_unit,
-                "installment_count": transaction.installment_count,
-            }
-            if transaction.recurrence_type == Transaction.RecurrenceType.INSTALLMENT:
-                update_payload["installment_number"] = F("installment_number")
-            else:
-                update_payload["installment_number"] = None
-            
-            self._get_related_occurrences_queryset(old_instance).update(**update_payload)
+        if scope == "all" and future_occurrences_queryset is not None:
+            self._apply_update_to_future_occurrences(transaction, future_occurrences_queryset)
 
     def perform_destroy(self, instance):
         unlock_password = self.request.data.get("unlock_password", "")
